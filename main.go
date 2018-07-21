@@ -1,10 +1,3 @@
-// This example demonstrates how to authenticate with Spotify.
-// In order to run this example yourself, you'll need to:
-//
-//  1. Register an application at: https://developer.spotify.com/my-applications/
-//       - Use "http://localhost:8080/callback" as the redirect URI
-//  2. Set the SPOTIFY_ID environment variable to the client ID you got in step 1.
-//  3. Set the SPOTIFY_SECRET environment variable to the client secret from step 1.
 package main
 
 import (
@@ -63,6 +56,17 @@ func spotifyAuthMiddleware(next http.Handler) http.Handler {
 					log.Fatalf("State mismatch: %s != %s\n", st, authState)
 				}
 
+				var client = _getSpotifyClientForRequest(tok)
+
+				currentUser, err := client.CurrentUser()
+
+				if err != nil {
+					log.Fatal("Could not fetch information on current user!", err)
+				}
+
+				log.Println("ID of current user:", currentUser.ID)
+
+				session.Values["user"] = currentUser
 				session.Values[sessionKeyForToken] = tok
 
 				// redirect to the route initially requested
@@ -90,10 +94,30 @@ func spotifyAuthMiddleware(next http.Handler) http.Handler {
 func getSpotifyClientForRequest(r *http.Request) *spotify.Client {
 	session, _ := store.Get(r, "session")
 
-	tokRaw := session.Values[sessionKeyForToken]
+	rawToken := session.Values[sessionKeyForToken]
+
+	return _getSpotifyClientForRequest(rawToken)
+}
+
+func getCurrentUser(r *http.Request) *spotify.PrivateUser {
+	session, _ := store.Get(r, "session")
+
+	rawUser := session.Values["user"]
+
+	var user = &spotify.PrivateUser{}
+	var ok = true
+	if user, ok = rawUser.(*spotify.PrivateUser); !ok {
+		// type-assert failed
+		log.Fatal("Could not type-assert the stored user!")
+	}
+
+	return user
+}
+
+func _getSpotifyClientForRequest(rawToken interface{}) *spotify.Client {
 	var tok = &oauth2.Token{}
 	var ok = true
-	if tok, ok = tokRaw.(*oauth2.Token); !ok {
+	if tok, ok = rawToken.(*oauth2.Token); !ok {
 		// type-assert failed
 		log.Fatal("Could not type-assert the stored token!")
 	}
@@ -106,6 +130,7 @@ func getSpotifyClientForRequest(r *http.Request) *spotify.Client {
 type m map[string]interface{}
 
 func main() {
+	gob.Register(&spotify.PrivateUser{})
 	gob.Register(&oauth2.Token{})
 	gob.Register(&m{})
 
@@ -124,6 +149,10 @@ func main() {
 	})
 	router.HandleFunc("/spotify-oauth-callback", func(w http.ResponseWriter, r *http.Request) {})
 	router.HandleFunc("/app", func(w http.ResponseWriter, r *http.Request) {
+		var user = getCurrentUser(r)
+
+		log.Println("Welcome back", user.ID)
+
 		var client = getSpotifyClientForRequest(r)
 
 		var playerState, err = client.PlayerState()
@@ -132,6 +161,12 @@ func main() {
 			log.Fatal(err)
 		}
 		fmt.Printf("Found your %s (%s)\n", playerState.Device.Type, playerState.Device.Name)
+	})
+	router.HandleFunc("/store", func(w http.ResponseWriter, r *http.Request) {
+		storeCurrentPlayerState(getSpotifyClientForRequest(r), &getCurrentUser(r).ID)
+	})
+	router.HandleFunc("/restore", func(w http.ResponseWriter, r *http.Request) {
+		restorePlayerState(getSpotifyClientForRequest(r), &getCurrentUser(r).ID)
 	})
 
 	http.Handle("/", router)
