@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/gob"
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
 	"net/url"
@@ -36,7 +35,7 @@ var (
 
 func spotifyAuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Println("Called Spotify Auth middleware...")
+		log.Println("Called Spotify Auth middleware...:", r.URL.String())
 		session, _ := store.Get(r, "session")
 
 		// if there is no oauth token yet...
@@ -135,6 +134,11 @@ func main() {
 	gob.Register(&oauth2.Token{})
 	gob.Register(&m{})
 
+	var cwd, _ = os.Getwd()
+	var staticAssetsPath = cwd + "/app"
+
+	log.Println(staticAssetsPath)
+
 	var clientID = strings.TrimSpace(os.Getenv(clientIDEnvName))
 	var clientSecret = strings.TrimSpace(os.Getenv(secretKeyEnvName))
 
@@ -144,30 +148,21 @@ func main() {
 
 	router := mux.NewRouter()
 	router.Use(spotifyAuthMiddleware)
-	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("This is a catch-all route"))
-		log.Println("Got request for:", r.URL.String())
-	})
+	router.PathPrefix("/static/app/").Handler(http.StripPrefix("/static/app/", http.FileServer(http.Dir(staticAssetsPath))))
+	// this route simple needs to be registered so that the catch all handler is able to get it?!
 	router.HandleFunc("/spotify-oauth-callback", func(w http.ResponseWriter, r *http.Request) {})
-	router.HandleFunc("/app", func(w http.ResponseWriter, r *http.Request) {
-		var user = getCurrentUser(r)
 
-		log.Println("Welcome back", user.ID)
+	// TODO Rename handlers
+	router.HandleFunc("/playerStates", storePostHandler).Methods("POST")
+	router.HandleFunc("/playerStates", storeGetHandler).Methods("GET")
+	router.HandleFunc("/playerStates/{slot}", storePutHandler).Methods("PUT") // TODO add the filter for methods
+	router.HandleFunc("/playerStates/{slot}", storeDeleteHandler).Methods("DELETE")
 
-		var client = getSpotifyClientForRequest(r)
+	router.HandleFunc("/playerStates/{slot}/restore", restoreHandler).Methods("POST")
 
-		var playerState, err = client.PlayerState()
-
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Printf("Found your %s (%s)\n", playerState.Device.Type, playerState.Device.Name)
-	}).Methods("GET")
-
-	router.HandleFunc("/store", storePutHandler).Methods("PUT")
-	router.HandleFunc("/store", storePostHandler).Methods("POST")
-
-	router.HandleFunc("/restore", restoreHandler)
+	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/static/app/", http.StatusTemporaryRedirect)
+	})
 
 	http.Handle("/", router)
 
@@ -177,7 +172,7 @@ func main() {
 }
 
 func storePutHandler(w http.ResponseWriter, r *http.Request) {
-	var slot, err = checkForSlotParameter(r)
+	var slot, err = checkSlotParameter(r)
 
 	if err != nil {
 		http.Error(w, "Could not process request: "+err.Error(), http.StatusBadRequest)
@@ -194,12 +189,36 @@ func storePutHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 }
 
+func storeGetHandler(w http.ResponseWriter, r *http.Request) {
+	// TODO
+}
+
+func storeDeleteHandler(w http.ResponseWriter, r *http.Request) {
+	var slot, err = checkSlotParameter(r)
+
+	if err != nil {
+		http.Error(w, "Could not process request: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var playerStates = playerStatesDAO.LoadPlayerStates(getCurrentUser(r).ID)
+
+	if slot >= len(playerStates.List) || slot < 0 {
+		http.Error(w, "Could not process request: 'slot' is not in the range of exisiting slots", http.StatusInternalServerError)
+		return
+	}
+
+	playerStates.List = append(playerStates.List[:slot], playerStates.List[slot+1:]...)
+
+	playerStatesDAO.SavePlayerStates(playerStates)
+}
+
 func storePostHandler(w http.ResponseWriter, r *http.Request) {
 	storeCurrentPlayerState(getSpotifyClientForRequest(r), &getCurrentUser(r).ID, -1)
 }
 
 func restoreHandler(w http.ResponseWriter, r *http.Request) {
-	var slot, err = checkForSlotParameter(r)
+	var slot, err = checkSlotParameter(r)
 
 	if err != nil {
 		http.Error(w, "Could not process request: "+err.Error(), http.StatusBadRequest)
@@ -216,14 +235,14 @@ func restoreHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 }
 
-func checkForSlotParameter(r *http.Request) (int, error) {
-	var rawSlot, ok = r.URL.Query()["slot"]
+func checkSlotParameter(r *http.Request) (int, error) {
+	var rawSlot, ok = mux.Vars(r)["slot"]
 
-	if !ok || len(rawSlot) > 1 {
+	if !ok {
 		return -1, errors.New("query parameter 'slot' not found or more than one provided")
 	}
 
-	var slot, err = strconv.Atoi(rawSlot[0])
+	var slot, err = strconv.Atoi(rawSlot)
 
 	if err != nil {
 		return -1, errors.New("query parameter 'slot' is not a valid integer")
