@@ -1,15 +1,16 @@
 package main
 
 import (
+	"encoding/gob"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"os"
-
-	"encoding/gob"
 
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
@@ -161,17 +162,75 @@ func main() {
 			log.Fatal(err)
 		}
 		fmt.Printf("Found your %s (%s)\n", playerState.Device.Type, playerState.Device.Name)
-	})
-	router.HandleFunc("/store", func(w http.ResponseWriter, r *http.Request) {
-		storeCurrentPlayerState(getSpotifyClientForRequest(r), &getCurrentUser(r).ID)
-	})
-	router.HandleFunc("/restore", func(w http.ResponseWriter, r *http.Request) {
-		restorePlayerState(getSpotifyClientForRequest(r), &getCurrentUser(r).ID)
-	})
+	}).Methods("GET")
+
+	router.HandleFunc("/store", storePutHandler).Methods("PUT")
+	router.HandleFunc("/store", storePostHandler).Methods("POST")
+
+	router.HandleFunc("/restore", restoreHandler)
 
 	http.Handle("/", router)
 
 	log.Println("Webserver started on", interfacePort)
 
 	http.ListenAndServe(interfacePort, context.ClearHandler(http.DefaultServeMux))
+}
+
+func storePutHandler(w http.ResponseWriter, r *http.Request) {
+	var slot, err = checkForSlotParameter(r)
+
+	if err != nil {
+		http.Error(w, "Could not process request: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	err = storeCurrentPlayerState(getSpotifyClientForRequest(r), &getCurrentUser(r).ID, slot)
+
+	if err != nil {
+		http.Error(w, "Could not process request: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+}
+
+func storePostHandler(w http.ResponseWriter, r *http.Request) {
+	storeCurrentPlayerState(getSpotifyClientForRequest(r), &getCurrentUser(r).ID, -1)
+}
+
+func restoreHandler(w http.ResponseWriter, r *http.Request) {
+	var slot, err = checkForSlotParameter(r)
+
+	if err != nil {
+		http.Error(w, "Could not process request: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	err = restorePlayerState(getSpotifyClientForRequest(r), &getCurrentUser(r).ID, slot)
+
+	if err != nil {
+		http.Error(w, "Could not process request: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+}
+
+func checkForSlotParameter(r *http.Request) (int, error) {
+	var rawSlot, ok = r.URL.Query()["slot"]
+
+	if !ok || len(rawSlot) > 1 {
+		return -1, errors.New("query parameter 'slot' not found or more than one provided")
+	}
+
+	var slot, err = strconv.Atoi(rawSlot[0])
+
+	if err != nil {
+		return -1, errors.New("query parameter 'slot' is not a valid integer")
+	}
+	if slot < 1 {
+		return -1, errors.New("query parameter 'slot' has to be >= 0")
+	}
+
+	return slot, nil
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"log"
 	"os"
 	"strings"
@@ -14,30 +15,49 @@ var (
 	mongoURI        = strings.TrimSpace(os.Getenv("mongo_db_uri"))
 )
 
-func storeCurrentPlayerState(client *spotify.Client, userID *string) {
+func storeCurrentPlayerState(client *spotify.Client, userID *string, slot int) error {
 	var currentlyPlaying, err = client.PlayerCurrentlyPlaying()
 
 	if err != nil {
-		log.Fatal("Could not read the current player state!", err)
+		log.Println("Could not read the current player state!", err)
+		return errors.New("could not read the current player state")
 	}
 
 	var playerStates = playerStatesDAO.LoadPlayerStates(*userID)
-	playerStates.List[0] = playerStateFromCurrentlyPlaying(currentlyPlaying)
+	var currentState = playerStateFromCurrentlyPlaying(currentlyPlaying)
+
+	// replace, if < 0 then append a new slot
+	if slot > 0 {
+		if slot >= len(playerStates.List) {
+			return errors.New("'slot' is not in the range of exisiting slots")
+		}
+
+		playerStates.List[slot] = currentState
+	} else {
+		playerStates.List = append(playerStates.List, currentState)
+	}
+
 	playerStatesDAO.SavePlayerStates(playerStates)
 
 	log.Println("Persisted current playing state:", currentlyPlaying)
 
 	client.Pause()
+
+	return nil
 }
 
-func restorePlayerState(client *spotify.Client, userID *string) {
+func restorePlayerState(client *spotify.Client, userID *string, slot int) error {
 	var playerStates = playerStatesDAO.LoadPlayerStates(*userID)
 
 	// if !ok {
 	// 	log.Println("There is no last state for this user (" + *userID + ")!")
 	// }
 
-	var stateToLoad = playerStates.List[0]
+	if slot >= len(playerStates.List) || slot < 0 {
+		return errors.New("'slot' is not in the range of exisiting slots")
+	}
+
+	var stateToLoad = playerStates.List[slot]
 
 	log.Println("Trying to restore the last state:", stateToLoad)
 
@@ -54,6 +74,8 @@ func restorePlayerState(client *spotify.Client, userID *string) {
 	client.Seek(stateToLoad.Progress)
 
 	client.Play()
+
+	return nil
 }
 
 func playerStateFromCurrentlyPlaying(currentlyPlaying *spotify.CurrentlyPlaying) *persistence.PlayerState {
