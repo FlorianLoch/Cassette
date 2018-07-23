@@ -37,27 +37,32 @@ func (p *PlayerStatesDAO) LoadPlayerStates(userID string) *PlayerStates {
 
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			return &PlayerStates{UserID: userID, List: make([]*PlayerState, 1)}
+			return &PlayerStates{UserID: userID, States: make([]*PlayerState, 1)}
 		}
 
 		log.Fatal("Could not load previous player states from db!\n\t", err)
 	}
 
-	return &PlayerStates{UserID: userID, List: item.PlayerStates}
+	return &PlayerStates{UserID: userID, States: item.PlayerStates}
 }
 
 func (p *PlayerStatesDAO) SavePlayerStates(playerStates *PlayerStates) {
 	var userID = playerStates.UserID
 
-	var wrapped = persistenceItem{Version: "1", UserID: userID, PlayerStates: playerStates.List}
+	var wrapped = persistenceItem{Version: "1", UserID: userID, PlayerStates: playerStates.States}
 
 	p.collection.UpsertId(userID, &wrapped)
 }
 
 type PlayerState struct {
-	PlaybackContextURI string
-	PlaybackItemURI    string
-	Progress           int
+	PlaybackContextURI string `json:"-"`
+	PlaybackItemURI    string `json:"-"`
+	TrackName          string `json:"trackName"`
+	AlbumName          string `json:"albumName"`
+	AlbumArtURL        string `json:"albumArtURL"`
+	ArtistName         string `json:"artistName"`
+	Progress           int    `json:"progress"`
+	Duration           int    `json:"duration"`
 }
 
 type persistenceItem struct {
@@ -67,6 +72,6 @@ type persistenceItem struct {
 }
 
 type PlayerStates struct {
-	UserID string
-	List   []*PlayerState
+	UserID string         `json:"-"`
+	States []*PlayerState `json:"states"`
 }

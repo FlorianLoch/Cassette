@@ -27,14 +27,14 @@ func storeCurrentPlayerState(client *spotify.Client, userID *string, slot int) e
 	var currentState = playerStateFromCurrentlyPlaying(currentlyPlaying)
 
 	// replace, if < 0 then append a new slot
-	if slot > 0 {
-		if slot >= len(playerStates.List) {
+	if slot >= 0 {
+		if slot >= len(playerStates.States) {
 			return errors.New("'slot' is not in the range of exisiting slots")
 		}
 
-		playerStates.List[slot] = currentState
+		playerStates.States[slot] = currentState
 	} else {
-		playerStates.List = append(playerStates.List, currentState)
+		playerStates.States = append(playerStates.States, currentState)
 	}
 
 	playerStatesDAO.SavePlayerStates(playerStates)
@@ -53,11 +53,11 @@ func restorePlayerState(client *spotify.Client, userID *string, slot int) error 
 	// 	log.Println("There is no last state for this user (" + *userID + ")!")
 	// }
 
-	if slot >= len(playerStates.List) || slot < 0 {
+	if slot >= len(playerStates.States) || slot < 0 {
 		return errors.New("'slot' is not in the range of exisiting slots")
 	}
 
-	var stateToLoad = playerStates.List[slot]
+	var stateToLoad = playerStates.States[slot]
 
 	log.Println("Trying to restore the last state:", stateToLoad)
 
@@ -79,5 +79,14 @@ func restorePlayerState(client *spotify.Client, userID *string, slot int) error 
 }
 
 func playerStateFromCurrentlyPlaying(currentlyPlaying *spotify.CurrentlyPlaying) *persistence.PlayerState {
-	return &persistence.PlayerState{PlaybackContextURI: string(currentlyPlaying.PlaybackContext.URI), PlaybackItemURI: string(currentlyPlaying.Item.URI), Progress: currentlyPlaying.Progress}
+	var item = currentlyPlaying.Item
+	var joinedArtists = ""
+	for idx, artist := range item.Artists {
+		joinedArtists += artist.Name
+		if idx < len(item.Artists) {
+			joinedArtists += ", "
+		}
+	}
+
+	return &persistence.PlayerState{string(currentlyPlaying.PlaybackContext.URI), string(item.URI), item.Name, item.Album.Name, item.Album.Images[0].URL, joinedArtists, currentlyPlaying.Progress, item.Duration}
 }

@@ -11,6 +11,8 @@ import (
 
 	"os"
 
+	"encoding/json"
+
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
@@ -190,7 +192,18 @@ func storePutHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func storeGetHandler(w http.ResponseWriter, r *http.Request) {
-	// TODO
+	var playerStates = playerStatesDAO.LoadPlayerStates(getCurrentUser(r).ID)
+
+	var json, err = json.Marshal(playerStates)
+
+	if err != nil {
+		http.Error(w, "Could not provide player states as JSON", http.StatusInternalServerError)
+		log.Println("Could not serialize playerStates to JSON:", err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(json)
 }
 
 func storeDeleteHandler(w http.ResponseWriter, r *http.Request) {
@@ -203,12 +216,12 @@ func storeDeleteHandler(w http.ResponseWriter, r *http.Request) {
 
 	var playerStates = playerStatesDAO.LoadPlayerStates(getCurrentUser(r).ID)
 
-	if slot >= len(playerStates.List) || slot < 0 {
+	if slot >= len(playerStates.States) || slot < 0 {
 		http.Error(w, "Could not process request: 'slot' is not in the range of exisiting slots", http.StatusInternalServerError)
 		return
 	}
 
-	playerStates.List = append(playerStates.List[:slot], playerStates.List[slot+1:]...)
+	playerStates.States = append(playerStates.States[:slot], playerStates.States[slot+1:]...)
 
 	playerStatesDAO.SavePlayerStates(playerStates)
 }
@@ -247,7 +260,7 @@ func checkSlotParameter(r *http.Request) (int, error) {
 	if err != nil {
 		return -1, errors.New("query parameter 'slot' is not a valid integer")
 	}
-	if slot < 1 {
+	if slot < 0 {
 		return -1, errors.New("query parameter 'slot' has to be >= 0")
 	}
 
