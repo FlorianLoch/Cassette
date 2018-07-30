@@ -21,13 +21,15 @@ import (
 )
 
 const (
-	clientIDEnvName    = "spotify_client_id"
-	secretKeyEnvName   = "spotify_secret_key"
-	authState          = "oauth_initiated"
-	sessionKeyForToken = "spotify-oauth-token"
-	interfacePort      = "localhost:8080"
+	clientIDEnvName        = "spotify_client_id"
+	secretKeyEnvName       = "spotify_secret_key"
+	authState              = "oauth_initiated"
+	sessionKeyForToken     = "spotify-oauth-token"
+	interfacePort          = "localhost:8080"
+	webUIStaticContentPath = "/webui"
 )
 
+// TODO Replace this by something better stored in an env
 var store = sessions.NewCookieStore([]byte("something-very-secret"))
 
 var (
@@ -137,7 +139,7 @@ func main() {
 	gob.Register(&m{})
 
 	var cwd, _ = os.Getwd()
-	var staticAssetsPath = cwd + "/app"
+	var staticAssetsPath = cwd + webUIStaticContentPath
 
 	log.Println(staticAssetsPath)
 
@@ -150,7 +152,7 @@ func main() {
 
 	router := mux.NewRouter()
 	router.Use(spotifyAuthMiddleware)
-	router.PathPrefix("/static/app/").Handler(http.StripPrefix("/static/app/", http.FileServer(http.Dir(staticAssetsPath))))
+	router.PathPrefix("/webui").Handler(http.StripPrefix("/webui/", http.FileServer(http.Dir(staticAssetsPath))))
 	// this route simple needs to be registered so that the catch all handler is able to get it?!
 	router.HandleFunc("/spotify-oauth-callback", func(w http.ResponseWriter, r *http.Request) {})
 
@@ -163,7 +165,7 @@ func main() {
 	router.HandleFunc("/playerStates/{slot}/restore", restoreHandler).Methods("POST")
 
 	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/static/app/", http.StatusTemporaryRedirect)
+		http.Redirect(w, r, "/webui/", http.StatusTemporaryRedirect)
 	})
 
 	http.Handle("/", router)

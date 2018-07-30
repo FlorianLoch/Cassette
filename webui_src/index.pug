@@ -1,0 +1,28 @@
+doctype html
+html(lang='en')
+  head
+    meta(charset='utf-8')
+    meta(name='viewport', content='width=device-width, initial-scale=1, shrink-to-fit=no')
+    link(rel='stylesheet', href='./style.css')
+    title ABHfS
+  body
+    #app
+      .container
+        .row
+          button.btn.btn-primary(type='button', v-on:click='storePlayerStateInNewSlot') Store current state
+        .row
+          .card(style='width: 18rem;', v-for='(state, slotNo) in playerStates')
+            img.card-img-top(:src='state.albumArtURL', alt='Album art provided by Spotify')
+            .card-body
+              h5.card-title {{state.trackName}}
+              p.card-text
+                | {{state.albumName}}
+                br
+                | {{state.artistName}}
+                br
+                | {{state.progress}} / {{state.duration}}
+              a.btn.btn-primary(href='#', v-on:click='storePlayerStateInSlot(slotNo)') Store
+              a.btn.btn-primary(href='#', v-on:click='restorePlayerStateFromSlot(slotNo)') Continue
+              a.btn.btn-primary(href='#', v-on:click='removeSlot(slotNo)') X
+        div
+    script(src='./script.js')

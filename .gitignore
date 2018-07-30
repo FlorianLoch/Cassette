@@ -1,2 +1,4 @@
 secrets.env
 vendor/
+webui_src/node_modules
+webui/
