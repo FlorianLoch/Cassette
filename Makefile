@@ -3,13 +3,13 @@ default: run
 .PHONY: prepare_webui webui run clean
 
 prepare_webui:
-	cd webui_src && npm install
+	npm install
 
 webui:
-	cd webui_src && grunt
+	grunt
 
-run:
-	go install && audioBookHelperForSpotify
+run_heroku:
+	audioBookHelperForSpotify ${PORT}
 
 clean:
 	rm -rf webui

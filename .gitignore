@@ -1,4 +1,4 @@
-secrets.env
+.env
 vendor/
-webui_src/node_modules
+node_modules/
 webui/

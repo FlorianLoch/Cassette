@@ -24,6 +24,8 @@
 #   go-tests = true
 #   unused-packages = true
 
+[metadata.heroku]
+  root-package = "github.com/florianloch/audioBookHelperForSpotify"
 
 [[constraint]]
   name = "github.com/gorilla/context"
@@ -48,10 +50,6 @@
 [prune]
   go-tests = true
   unused-packages = true
-
-[[constraint]]
-  name = "github.com/mongodb/mongo-go-driver"
-  version = "0.0.9"
 
 [[constraint]]
   branch = "master"

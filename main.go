@@ -25,15 +25,17 @@ const (
 	secretKeyEnvName       = "spotify_secret_key"
 	authState              = "oauth_initiated"
 	sessionKeyForToken     = "spotify-oauth-token"
-	interfacePort          = "localhost:8080"
 	webUIStaticContentPath = "/webui"
 )
+
+var interfacePort = "localhost:" + os.Args[1]
+var appURL = "https://audio-book-helper-for-spotify.herokuapp.com/"
 
 // TODO Replace this by something better stored in an env
 var store = sessions.NewCookieStore([]byte("something-very-secret"))
 
 var (
-	redirectURL, _ = url.Parse("http://localhost:8080/spotify-oauth-callback")
+	redirectURL, _ = url.Parse(appURL + "spotify-oauth-callback")
 	auth           = spotify.NewAuthenticator(redirectURL.String(), spotify.ScopeUserReadCurrentlyPlaying, spotify.ScopeUserReadPlaybackState, spotify.ScopeUserModifyPlaybackState)
 )
 
