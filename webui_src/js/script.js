@@ -6,7 +6,11 @@
   //   });
   // });
 
-  const URL_PLAYER_STATES = "/playerStates"
+  const URL_CSRF_TOKEN = "/csrfToken";
+  const URL_PLAYER_STATES = "/playerStates";
+  const CSRF_HEADER_NAME = "X-CSRF-Token";
+
+  // TODO Add error handlers
 
   const app = new Vue({
     el: '#app',
@@ -15,6 +19,15 @@
       playerStates: []
     },
     methods: {
+      fetchCSRFToken: function (done) {
+        this.$http.head(URL_CSRF_TOKEN).then(res => {
+          csrfToken = res.headers.get(CSRF_HEADER_NAME);
+
+          Vue.http.headers.common[CSRF_HEADER_NAME] = csrfToken;
+
+          done();
+        });
+      },
       fetchPlayerStates: function () {
         const self = this;
         this.$http.get(URL_PLAYER_STATES).then(res => {
@@ -59,7 +72,7 @@
       }
     },
     mounted: function () {
-      this.fetchPlayerStates();
+      this.fetchCSRFToken(this.fetchPlayerStates);
     }
   });
 })();

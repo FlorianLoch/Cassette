@@ -8,6 +8,14 @@ prepare_webui:
 webui:
 	grunt
 
+run: webui compile start
+
+compile:
+	go install
+
+start:
+	audioBookHelperForSpotify
+
 run_heroku:
 	audioBookHelperForSpotify ${PORT}
 

@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 
 	"github.com/gorilla/context"
+	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"github.com/zmb3/spotify"
@@ -28,7 +29,8 @@ const (
 	webUIStaticContentPath = "/webui"
 )
 
-var interfacePort = "localhost:" + os.Args[1]
+var port = "8080"
+
 var appURL = "https://audio-book-helper-for-spotify.herokuapp.com/"
 
 // TODO Replace this by something better stored in an env
@@ -37,6 +39,14 @@ var store = sessions.NewCookieStore([]byte("something-very-secret"))
 var (
 	redirectURL, _ = url.Parse(appURL + "spotify-oauth-callback")
 	auth           = spotify.NewAuthenticator(redirectURL.String(), spotify.ScopeUserReadCurrentlyPlaying, spotify.ScopeUserReadPlaybackState, spotify.ScopeUserModifyPlaybackState)
+)
+
+var CSRF = csrf.Protect(
+	[]byte("a-32-byte-long-key-goes-here"),
+	csrf.RequestHeader("X-CSRF-Token"),
+	csrf.FieldName("CSRF_token"),
+	csrf.Secure(false), // TODO Change this in Prod
+	// csrf.ErrorHandler(http.HandlerFunc(hterverError(403))),
 )
 
 func spotifyAuthMiddleware(next http.Handler) http.Handler {
@@ -136,6 +146,12 @@ func _getSpotifyClientForRequest(rawToken interface{}) *spotify.Client {
 type m map[string]interface{}
 
 func main() {
+	if len(os.Args) >= 2 {
+		port = os.Args[1]
+	}
+
+	var interfacePort = "localhost:" + port
+
 	gob.Register(&spotify.PrivateUser{})
 	gob.Register(&oauth2.Token{})
 	gob.Register(&m{})
@@ -159,6 +175,7 @@ func main() {
 	router.HandleFunc("/spotify-oauth-callback", func(w http.ResponseWriter, r *http.Request) {})
 
 	// TODO Rename handlers
+	router.HandleFunc("/csrfToken", csrfHandler).Methods("HEAD")
 	router.HandleFunc("/playerStates", storePostHandler).Methods("POST")
 	router.HandleFunc("/playerStates", storeGetHandler).Methods("GET")
 	router.HandleFunc("/playerStates/{slot}", storePutHandler).Methods("PUT") // TODO add the filter for methods
@@ -174,7 +191,13 @@ func main() {
 
 	log.Println("Webserver started on", interfacePort)
 
-	http.ListenAndServe(interfacePort, context.ClearHandler(http.DefaultServeMux))
+	http.ListenAndServe(interfacePort, CSRF(context.ClearHandler(http.DefaultServeMux)))
+}
+
+func csrfHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("X-CSRF-Token", csrf.Token(r))
+
+	w.WriteHeader(http.StatusOK)
 }
 
 func storePutHandler(w http.ResponseWriter, r *http.Request) {
