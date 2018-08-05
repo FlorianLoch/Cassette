@@ -1,1 +1,1 @@
-web: make webui && make run_heroku
+web: make webui && make start

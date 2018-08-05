@@ -30,15 +30,16 @@ const (
 )
 
 var port = "8080"
+var networkInterface = "localhost"
 
-var appURL = "https://audio-book-helper-for-spotify.herokuapp.com/"
+var appURL = "localhost"
 
 // TODO Replace this by something better stored in an env
 var store = sessions.NewCookieStore([]byte("something-very-secret"))
 
 var (
-	redirectURL, _ = url.Parse(appURL + "spotify-oauth-callback")
-	auth           = spotify.NewAuthenticator(redirectURL.String(), spotify.ScopeUserReadCurrentlyPlaying, spotify.ScopeUserReadPlaybackState, spotify.ScopeUserModifyPlaybackState)
+	redirectURL *url.URL
+	auth        spotify.Authenticator
 )
 
 var CSRF = csrf.Protect(
@@ -146,11 +147,22 @@ func _getSpotifyClientForRequest(rawToken interface{}) *spotify.Client {
 type m map[string]interface{}
 
 func main() {
-	if len(os.Args) >= 2 {
-		port = os.Args[1]
+	if os.Getenv("PORT") != "" {
+		port = os.Getenv("PORT")
 	}
 
-	var interfacePort = "localhost:" + port
+	if os.Getenv("APP_URL") != "" {
+		appURL = os.Getenv("APP_URL")
+	}
+
+	if os.Getenv("NETWORK_INTERFACE") != "" {
+		networkInterface = os.Getenv("NETWORK_INTERFACE")
+	}
+
+	redirectURL, _ = url.Parse(appURL + "spotify-oauth-callback")
+	auth = spotify.NewAuthenticator(redirectURL.String(), spotify.ScopeUserReadCurrentlyPlaying, spotify.ScopeUserReadPlaybackState, spotify.ScopeUserModifyPlaybackState)
+
+	interfacePort := networkInterface + ":" + port
 
 	gob.Register(&spotify.PrivateUser{})
 	gob.Register(&oauth2.Token{})
