@@ -21,8 +21,8 @@ html(lang='en')
                 | {{state.artistName}}
                 br
                 | {{state.progress}} / {{state.duration}}
-              a.btn.btn-primary(href='#', v-on:click='storePlayerStateInSlot(slotNo)') Store
-              a.btn.btn-primary(href='#', v-on:click='restorePlayerStateFromSlot(slotNo)') Continue
-              a.btn.btn-primary(href='#', v-on:click='removeSlot(slotNo)') X
+              button.btn.btn-primary(v-on:click='storePlayerStateInSlot(slotNo)') Store
+              button.btn.btn-primary(v-on:click='restorePlayerStateFromSlot(slotNo)') Continue
+              button.btn.btn-primary(v-on:click='removeSlot(slotNo)') X
         div
     script(src='./script.js')

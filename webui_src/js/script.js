@@ -1,10 +1,10 @@
 (() => {
-  // Vue.http.interceptors.push((req, nxt) => {
-  //   NProgress.start();
-  //   nxt(() => {
-  //       NProgress.done();
-  //   });
-  // });
+  Vue.http.interceptors.push((req, nxt) => {
+    NProgress.start();
+    nxt(() => {
+        NProgress.done();
+    });
+  });
 
   const URL_CSRF_TOKEN = "/csrfToken";
   const URL_PLAYER_STATES = "/playerStates";
@@ -26,6 +26,8 @@
           Vue.http.headers.common[CSRF_HEADER_NAME] = csrfToken;
 
           done();
+        }, res => {
+          console.error("Could not fetch CSRF token!");
         });
       },
       fetchPlayerStates: function () {
@@ -58,7 +60,7 @@
         const self = this;
         this.$http.delete(`${URL_PLAYER_STATES}/${slotNo}`).then(res => {
           console.info("Successfully removed slot!");
-          self.fetchPlayerStates();
+          self.playerStates.splice(slotNo, 1);
         }, res => {
           console.error(`Requesting to delete slot (${slotNo}) failed!`, res)
         });
