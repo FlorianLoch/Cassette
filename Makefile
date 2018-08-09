@@ -16,8 +16,10 @@ compile:
 start:
 	audioBookHelperForSpotify
 
-run_heroku:
-	audioBookHelperForSpotify ${PORT}
+start_heroko_local:
+	heroku local
+
+run_local: compile start_heroko_local
 
 clean:
 	rm -rf webui
