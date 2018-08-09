@@ -45,7 +45,7 @@ module.exports = function (grunt) {
           // },
           dist: {
               files: {
-                  "./webui/_build/style.css": "./webui_src/scss/*.scss"
+                  "./webui/_build/style.css": "./webui_src/scss/style.scss"
               }
           }
       },
@@ -88,6 +88,6 @@ module.exports = function (grunt) {
 
   require("load-grunt-tasks")(grunt);
 
-  grunt.registerTask("default", ["pug", "babel", "concat", "clean"]); // add "sass" before "concat"
+  grunt.registerTask("default", ["pug", "babel", "sass", "concat", "clean"]);
   grunt.registerTask("w", ["watch"]);
 };
