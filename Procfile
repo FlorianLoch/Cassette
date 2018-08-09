@@ -1,1 +1,1 @@
-web: make webui && make compile start
+web: make webui && make start
