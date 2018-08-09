@@ -18,6 +18,17 @@
       message: 'Hello Vue!',
       playerStates: []
     },
+    filters: {
+      time: function (millis) {
+        const inSecs = Math.round(millis / 1000)
+        const hours = Math.floor(inSecs / 3600)
+        const remaining = inSecs - hours * 3600
+        const minutes = Math.floor(remaining / 60)
+        const seconds = remaining - minutes * 60
+
+        return `${(hours > 0) ? hours + ":" : ""}${(minutes < 10) ? "0" : ""}${minutes}:${(seconds < 10) ? "0" : ""}${seconds}`
+      }
+    },
     methods: {
       fetchCSRFToken: function (done) {
         this.$http.head(URL_CSRF_TOKEN).then(res => {

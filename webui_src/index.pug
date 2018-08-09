@@ -4,25 +4,31 @@ html(lang='en')
     meta(charset='utf-8')
     meta(name='viewport', content='width=device-width, initial-scale=1, shrink-to-fit=no')
     link(rel='stylesheet', href='./style.css')
-    title ABHfS
+    title ABHfS v0.1
   body
     #app
       .container
+        .col-md-12
+          .row
+            button.btn.btn-block.mb-4.mt-4.btn-success(type='button', v-on:click='storePlayerStateInNewSlot') Store current state
         .row
-          button.btn.btn-primary(type='button', v-on:click='storePlayerStateInNewSlot') Store current state
-        .row
-          .card(style='width: 18rem;', v-for='(state, slotNo) in playerStates')
-            img.card-img-top(:src='state.albumArtURL', alt='Album art provided by Spotify')
-            .card-body
-              h5.card-title {{state.trackName}}
-              p.card-text
-                | {{state.albumName}}
-                br
-                | {{state.artistName}}
-                br
-                | {{state.progress}} / {{state.duration}}
-              button.btn.btn-primary(v-on:click='storePlayerStateInSlot(slotNo)') Store
-              button.btn.btn-primary(v-on:click='restorePlayerStateFromSlot(slotNo)') Continue
-              button.btn.btn-primary(v-on:click='removeSlot(slotNo)') X
+          .col-md-4(v-for='(state, slotNo) in playerStates')
+            .card.mb-4.box-shadow
+              img.card-img-top(:src='state.albumArtURL', alt='Album art provided by Spotify')
+              .card-body
+                h5.card-title {{state.trackName}}
+                p.card-text
+                  | {{state.albumName}}
+                  br
+                  | {{state.artistName}}
+                  br
+                  | {{state.progress | time}} / {{state.duration | time}}
+                .row
+                  .col-md-4.p-1
+                    button.btn-block.btn.btn-primary(v-on:click='storePlayerStateInSlot(slotNo)') Store
+                  .col-md-4.p-1
+                    button.btn-block.btn.btn-primary(v-on:click='restorePlayerStateFromSlot(slotNo)') Continue
+                  .col-md-4.p-1
+                    button.btn-block.btn.btn-secondary(v-on:click='removeSlot(slotNo)') X
         div
     script(src='./script.js')
