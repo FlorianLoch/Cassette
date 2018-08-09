@@ -27,6 +27,7 @@ const (
 	authState              = "oauth_initiated"
 	sessionKeyForToken     = "spotify-oauth-token"
 	webUIStaticContentPath = "/webui"
+	jumpBackNSeconds       = 10
 )
 
 var port = "8080"

@@ -71,6 +71,10 @@ func restorePlayerState(client *spotify.Client, userID *string, slot int) error 
 
 	log.Println(string(itemURI))
 
+	if stateToLoad.Progress >= jumpBackNSeconds*1e3 {
+		stateToLoad.Progress -= jumpBackNSeconds * 1e3
+	}
+
 	client.Seek(stateToLoad.Progress)
 
 	client.Play()
