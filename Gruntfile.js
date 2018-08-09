@@ -40,9 +40,10 @@ module.exports = function (grunt) {
           }
       },
       sass: {
-          // options: {
+          options: {
           //     sourceMap: true
-          // },
+            implementation: require("node-sass")
+          },
           dist: {
               files: {
                   "./webui/_build/style.css": "./webui_src/scss/style.scss"
