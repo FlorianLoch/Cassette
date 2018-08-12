@@ -5,6 +5,9 @@ html(lang='en')
     meta(name='viewport', content='width=device-width, initial-scale=1, shrink-to-fit=no')
     meta(name="theme-color", content="#1DB954")
     link(rel='stylesheet', href='./style.css')
+    link(rel="stylesheet", href="https://use.fontawesome.com/releases/v5.2.0/css/all.css", integrity="sha384-hWVjflwFxL6sNzntih27bfxkr27PmbbK/iSvJ+a4+0owXq79v+lsFkW54bOGbiDQ", crossorigin="anonymous")
+
+
     title ABHfS v0.1
   body
     #app
@@ -26,15 +29,18 @@ html(lang='en')
                   | {{state.progress | time}} / {{state.duration | time}}
                 .row
                   .col-md-4.p-1
-                    button.btn-block.btn.btn-primary(v-on:click='storePlayerStateInSlot(slotNo)') Store
+                    button.btn-block.btn.btn-primary(v-on:click='storePlayerStateInSlot(slotNo)')
+                      i.fas.fa-stop-circle
                   .col-md-4.p-1.btn-group.btn-block
-                    button.col-9.btn.btn-primary(v-on:click='restorePlayerStateFromSlot(slotNo)') Continue
-                    button.col-3.btn.btn-primary.dropdown-toggle.dropdown-toggle-split(type="button", data-toggle="dropdown", aria-haspopup="true", aria-expanded="false")
+                    button.col-9.btn.btn-primary(v-on:click='restorePlayerStateFromSlot(slotNo)')
+                      i.fas.fa-play-circle
+                    button.col-3.btn.btn-secondary.dropdown-toggle.dropdown-toggle-split(type="button", data-toggle="dropdown", aria-haspopup="true", aria-expanded="false")
                       span.sr-only Toggle Dropdown
                     .dropdown-menu
                       a.dropdown-item(href="#", v-for="(device) in activeDevices", v-on:click="restorePlayerStateFromSlot(slotNo, device.id)") {{device.name}}
                   .col-md-4.p-1
-                    button.btn-block.btn.btn-secondary(v-on:click='removeSlot(slotNo)') X
+                    button.btn-block.btn.btn-danger(v-on:click='removeSlot(slotNo)')
+                      i.fas.fa-trash-alt
         div
 
     script(src='./script.js')
