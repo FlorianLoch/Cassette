@@ -37,7 +37,9 @@ html(lang='en')
                     button.col-3.btn.btn-secondary.dropdown-toggle.dropdown-toggle-split(type="button", data-toggle="dropdown", aria-haspopup="true", aria-expanded="false")
                       span.sr-only Toggle Dropdown
                     .dropdown-menu
-                      a.dropdown-item(href="#", v-for="(device) in activeDevices", v-on:click="restorePlayerStateFromSlot(slotNo, device.id)") {{device.name}}
+                      btn.dropdown-item.disabled Start playback on:
+                      .dropdown-divider
+                      btn.dropdown-item(v-for="(device) in activeDevices", v-on:click="restorePlayerStateFromSlot(slotNo, device.id)") {{device.name}}
                   .col-md-4.p-1
                     button.btn-block.btn.btn-danger(v-on:click='removeSlot(slotNo)')
                       i.fas.fa-trash-alt
