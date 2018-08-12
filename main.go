@@ -28,6 +28,7 @@ const (
 	sessionKeyForToken     = "spotify-oauth-token"
 	webUIStaticContentPath = "/webui"
 	jumpBackNSeconds       = 10
+	deviceIDQueryName      = "deviceID"
 )
 
 var port = "8080"
@@ -189,6 +190,7 @@ func main() {
 
 	// TODO Rename handlers
 	router.HandleFunc("/csrfToken", csrfHandler).Methods("HEAD")
+	router.HandleFunc("/activeDevices", activeDevicesHandler).Methods("GET")
 	router.HandleFunc("/playerStates", storePostHandler).Methods("POST")
 	router.HandleFunc("/playerStates", storeGetHandler).Methods("GET")
 	router.HandleFunc("/playerStates/{slot}", storePutHandler).Methods("PUT") // TODO add the filter for methods
@@ -211,6 +213,18 @@ func csrfHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-CSRF-Token", csrf.Token(r))
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func activeDevicesHandler(w http.ResponseWriter, r *http.Request) {
+	json, err := getActiveSpotifyDevices(getSpotifyClientForRequest(r))
+
+	if err != nil {
+		log.Println("Could not fetch list of active devices: ", err)
+		http.Error(w, "Could not fetch list of active devices from Spotify!", http.StatusInternalServerError)
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(json)
 }
 
 func storePutHandler(w http.ResponseWriter, r *http.Request) {
@@ -273,12 +287,14 @@ func storePostHandler(w http.ResponseWriter, r *http.Request) {
 func restoreHandler(w http.ResponseWriter, r *http.Request) {
 	var slot, err = checkSlotParameter(r)
 
+	var deviceID = r.URL.Query().Get(deviceIDQueryName)
+
 	if err != nil {
 		http.Error(w, "Could not process request: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	err = restorePlayerState(getSpotifyClientForRequest(r), &getCurrentUser(r).ID, slot)
+	err = restorePlayerState(getSpotifyClientForRequest(r), &getCurrentUser(r).ID, slot, deviceID)
 
 	if err != nil {
 		http.Error(w, "Could not process request: "+err.Error(), http.StatusInternalServerError)

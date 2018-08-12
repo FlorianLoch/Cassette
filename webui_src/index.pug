@@ -27,9 +27,14 @@ html(lang='en')
                 .row
                   .col-md-4.p-1
                     button.btn-block.btn.btn-primary(v-on:click='storePlayerStateInSlot(slotNo)') Store
-                  .col-md-4.p-1
-                    button.btn-block.btn.btn-primary(v-on:click='restorePlayerStateFromSlot(slotNo)') Continue
+                  .col-md-4.p-1.btn-group.btn-block
+                    button.col-9.btn.btn-primary(v-on:click='restorePlayerStateFromSlot(slotNo)') Continue
+                    button.col-3.btn.btn-primary.dropdown-toggle.dropdown-toggle-split(type="button", data-toggle="dropdown", aria-haspopup="true", aria-expanded="false")
+                      span.sr-only Toggle Dropdown
+                    .dropdown-menu
+                      a.dropdown-item(href="#", v-for="(device) in activeDevices", v-on:click="restorePlayerStateFromSlot(slotNo, device.id)") {{device.name}}
                   .col-md-4.p-1
                     button.btn-block.btn.btn-secondary(v-on:click='removeSlot(slotNo)') X
         div
+
     script(src='./script.js')

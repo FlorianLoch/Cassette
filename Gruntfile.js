@@ -54,6 +54,8 @@ module.exports = function (grunt) {
           js: {
               files: {
                   "./webui/script.js": [
+                      "./node_modules/jquery/dist/jquery.min.js",
+                      "./node_modules/bootstrap/dist/js/bootstrap.bundle.min.js",
                       "./node_modules/nprogress/nprogress.js",
                       "./node_modules/vue/dist/vue.min.js",
                       "./node_modules/vue-resource/dist/vue-resource.min.js",

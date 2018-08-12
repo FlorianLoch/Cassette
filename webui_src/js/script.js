@@ -8,6 +8,7 @@
 
   const URL_CSRF_TOKEN = "/csrfToken";
   const URL_PLAYER_STATES = "/playerStates";
+  const URL_ACTIVE_DEVICES = "/activeDevices"
   const CSRF_HEADER_NAME = "X-CSRF-Token";
 
   // TODO Add error handlers
@@ -16,7 +17,8 @@
     el: '#app',
     data: {
       message: 'Hello Vue!',
-      playerStates: []
+      playerStates: [],
+      activeDevices: []
     },
     filters: {
       time: function (millis) {
@@ -39,6 +41,15 @@
           done();
         }, res => {
           console.error("Could not fetch CSRF token!");
+        });
+      },
+      fetchActiveDevices: function () {
+        const self = this;
+        this.$http.get(URL_ACTIVE_DEVICES).then(res => {
+          self.activeDevices = res.body;
+          console.log(res.body);
+        }, res => {
+          console.error("Requesting active devices from backend failed!", res)
         });
       },
       fetchPlayerStates: function () {
@@ -76,8 +87,10 @@
           console.error(`Requesting to delete slot (${slotNo}) failed!`, res)
         });
       },
-      restorePlayerStateFromSlot: function (slotNo) {
-        this.$http.post(`${URL_PLAYER_STATES}/${slotNo}/restore`).then(res => {
+      restorePlayerStateFromSlot: function (slotNo, deviceID) {
+        const url = `${URL_PLAYER_STATES}/${slotNo}/restore${(deviceID) ? `?deviceID=${deviceID}` : ""}`;
+
+        this.$http.post(url).then(res => {
           console.info("Successfully restored player state!");
         }, res => {
           console.error(`Requesting to restore player state from slot (${slotNo}) failed!`, res)
@@ -85,6 +98,7 @@
       }
     },
     mounted: function () {
+      this.fetchActiveDevices();
       this.fetchCSRFToken(this.fetchPlayerStates);
     }
   });

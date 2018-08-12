@@ -19,7 +19,7 @@ start:
 start_heroko_local:
 	heroku local
 
-run_local: compile start_heroko_local
+run_local: compile webui start_heroko_local
 
 clean:
 	rm -rf webui

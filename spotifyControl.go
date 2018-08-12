@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"log"
 	"os"
@@ -46,12 +47,8 @@ func storeCurrentPlayerState(client *spotify.Client, userID *string, slot int) e
 	return nil
 }
 
-func restorePlayerState(client *spotify.Client, userID *string, slot int) error {
+func restorePlayerState(client *spotify.Client, userID *string, slot int, deviceID string) error {
 	var playerStates = playerStatesDAO.LoadPlayerStates(*userID)
-
-	// if !ok {
-	// 	log.Println("There is no last state for this user (" + *userID + ")!")
-	// }
 
 	if slot >= len(playerStates.States) || slot < 0 {
 		return errors.New("'slot' is not in the range of exisiting slots")
@@ -59,17 +56,25 @@ func restorePlayerState(client *spotify.Client, userID *string, slot int) error 
 
 	var stateToLoad = playerStates.States[slot]
 
-	log.Println("Trying to restore the last state:", stateToLoad)
+	log.Println("Trying to restore the last state on device '", deviceID, "': ", stateToLoad)
+
+	client.Pause()
 
 	var contextURI = spotify.URI(stateToLoad.PlaybackContextURI)
 	var itemURI = spotify.URI(stateToLoad.PlaybackItemURI)
-	var spotifyPlayOptions = spotify.PlayOptions{
+	var spotifyPlayOptions = &spotify.PlayOptions{
 		PlaybackContext: &contextURI,
 		PlaybackOffset:  &spotify.PlaybackOffset{URI: itemURI},
 	}
-	client.PlayOpt(&spotifyPlayOptions)
 
-	log.Println(string(itemURI))
+	if deviceID != "" {
+		var id = spotify.ID(deviceID)
+		spotifyPlayOptions.DeviceID = &id
+	}
+
+	client.PlayOpt(spotifyPlayOptions)
+
+	log.Println(spotifyPlayOptions)
 
 	if stateToLoad.Progress >= jumpBackNSeconds*1e3 {
 		stateToLoad.Progress -= jumpBackNSeconds * 1e3
@@ -77,7 +82,17 @@ func restorePlayerState(client *spotify.Client, userID *string, slot int) error 
 
 	client.Seek(stateToLoad.Progress)
 
-	client.Play()
+	if deviceID != "" {
+		var id = spotify.ID(deviceID)
+		spotifyPlayOptions = &spotify.PlayOptions{}
+		spotifyPlayOptions.DeviceID = &id
+	}
+
+	err := client.PlayOpt(spotifyPlayOptions)
+
+	if err != nil {
+		log.Println(err)
+	}
 
 	return nil
 }
@@ -93,4 +108,30 @@ func playerStateFromCurrentlyPlaying(currentlyPlaying *spotify.CurrentlyPlaying)
 	}
 
 	return &persistence.PlayerState{string(currentlyPlaying.PlaybackContext.URI), string(item.URI), item.Name, item.Album.Name, item.Album.Images[0].URL, joinedArtists, currentlyPlaying.Progress, item.Duration}
+}
+
+func getActiveSpotifyDevices(client *spotify.Client) ([]byte, error) {
+	devices, err := client.PlayerDevices()
+
+	if err != nil {
+		return nil, err
+	}
+
+	condensedDevices := make([]condensedPlayerDevice, len(devices))
+
+	for i, device := range devices {
+		condensedDevices[i] = condensedPlayerDevice{
+			ID:   string(device.ID),
+			Name: device.Name,
+		}
+	}
+
+	json, err := json.Marshal(condensedDevices)
+
+	return json, err
+}
+
+type condensedPlayerDevice struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
 }
