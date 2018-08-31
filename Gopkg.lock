@@ -11,13 +11,13 @@
     "internal/sasl",
     "internal/scram"
   ]
-  revision = "113d3961e7311526535a1ef7042196563d442761"
+  revision = "6f9f54af1356a8f1a83e6daf0b351ba6ed6e42c6"
 
 [[projects]]
   name = "github.com/golang/protobuf"
   packages = ["proto"]
-  revision = "b4deda0973fb4c70b50d226b1af49f3da59f5265"
-  version = "v1.1.0"
+  revision = "aa810b61a9c79d51363740d207bb46cf8e620ed5"
+  version = "v1.2.0"
 
 [[projects]]
   name = "github.com/gorilla/context"
@@ -59,7 +59,8 @@
   branch = "master"
   name = "github.com/zmb3/spotify"
   packages = ["."]
-  revision = "035b08df67f491832490996ca695229413877afe"
+  revision = "b0e9da4ca50ecae58022e24761ff94e7f5d7ddb4"
+  source = "https://github.com/FlorianLoch/spotify"
 
 [[projects]]
   branch = "master"
@@ -68,7 +69,7 @@
     "context",
     "context/ctxhttp"
   ]
-  revision = "a680a1efc54dd51c040b3b5ce4939ea3cf2ea0d1"
+  revision = "8a410e7b638dca158bf9e766925842f6651ff828"
 
 [[projects]]
   branch = "master"
@@ -77,7 +78,7 @@
     ".",
     "internal"
   ]
-  revision = "ef147856a6ddbb60760db74283d2424e98c87bff"
+  revision = "d2e6202438beef2727060aa7cabdd924d92ebfd9"
 
 [[projects]]
   name = "google.golang.org/appengine"
@@ -96,6 +97,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "e28dd25c276b566ff894db0891ecb3b2cdccd277a01ecd3b0e543b74306735df"
+  inputs-digest = "9ec9231cc370d5b35cb231b36d90066d7b5893268b08b21eab8563d29424c400"
   solver-name = "gps-cdcl"
   solver-version = 1

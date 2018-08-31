@@ -1,6 +1,6 @@
 default: run_local
 
-.PHONY: prepare_webui webui clean
+.PHONY: prepare_webui webui clean deploy
 
 run_local: compile webui start_heroko_local
 
@@ -21,3 +21,6 @@ start_heroko_local:
 
 clean:
 	rm -rf webui
+
+deploy:
+	git push heroku master -f
