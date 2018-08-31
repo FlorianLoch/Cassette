@@ -34,7 +34,7 @@ const (
 var port = "8080"
 var networkInterface = "localhost"
 
-var appURL = "localhost"
+var appURL = "http://localhost:8080/"
 
 // TODO Replace this by something better stored in an env
 var store = sessions.NewCookieStore([]byte("something-very-secret"))

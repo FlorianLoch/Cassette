@@ -60,33 +60,33 @@ func restorePlayerState(client *spotify.Client, userID *string, slot int, device
 
 	client.Pause()
 
+	if stateToLoad.Progress >= jumpBackNSeconds*1e3 {
+		stateToLoad.Progress -= jumpBackNSeconds * 1e3
+	}
+
 	var contextURI = spotify.URI(stateToLoad.PlaybackContextURI)
 	var itemURI = spotify.URI(stateToLoad.PlaybackItemURI)
 	var spotifyPlayOptions = &spotify.PlayOptions{
 		PlaybackContext: &contextURI,
 		PlaybackOffset:  &spotify.PlaybackOffset{URI: itemURI},
+		PositionMs:      stateToLoad.Progress,
 	}
 
-	if deviceID != "" {
-		var id = spotify.ID(deviceID)
-		spotifyPlayOptions.DeviceID = &id
+	var id spotify.ID
+	if deviceID == "" {
+		var err error
+		id, err = getDeviceForPlayback(client)
+
+		if err != nil {
+			return err
+		}
+	} else {
+		id = spotify.ID(deviceID)
 	}
+
+	spotifyPlayOptions.DeviceID = &id
 
 	client.PlayOpt(spotifyPlayOptions)
-
-	log.Println(spotifyPlayOptions)
-
-	if stateToLoad.Progress >= jumpBackNSeconds*1e3 {
-		stateToLoad.Progress -= jumpBackNSeconds * 1e3
-	}
-
-	client.Seek(stateToLoad.Progress)
-
-	if deviceID != "" {
-		var id = spotify.ID(deviceID)
-		spotifyPlayOptions = &spotify.PlayOptions{}
-		spotifyPlayOptions.DeviceID = &id
-	}
 
 	err := client.PlayOpt(spotifyPlayOptions)
 
@@ -95,6 +95,26 @@ func restorePlayerState(client *spotify.Client, userID *string, slot int, device
 	}
 
 	return nil
+}
+
+func getDeviceForPlayback(client *spotify.Client) (spotify.ID, error) {
+	devices, err := client.PlayerDevices()
+
+	if err != nil {
+		return "", err
+	}
+
+	if len(devices) == 0 {
+		return "", errors.New("No (active) device available for playback!")
+	}
+
+	for _, device := range devices {
+		if device.Active {
+			return device.ID, nil
+		}
+	}
+
+	return devices[0].ID, nil
 }
 
 func playerStateFromCurrentlyPlaying(currentlyPlaying *spotify.CurrentlyPlaying) *persistence.PlayerState {
@@ -121,8 +141,9 @@ func getActiveSpotifyDevices(client *spotify.Client) ([]byte, error) {
 
 	for i, device := range devices {
 		condensedDevices[i] = condensedPlayerDevice{
-			ID:   string(device.ID),
-			Name: device.Name,
+			ID:     string(device.ID),
+			Name:   device.Name,
+			Active: device.Active,
 		}
 	}
 
@@ -132,6 +153,7 @@ func getActiveSpotifyDevices(client *spotify.Client) ([]byte, error) {
 }
 
 type condensedPlayerDevice struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID     string `json:"id"`
+	Name   string `json:"name"`
+	Active bool   `json:"active"`
 }

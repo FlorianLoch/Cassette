@@ -19,7 +19,7 @@ func NewPlayerStatesDAO(connectionString string) *PlayerStatesDAO {
 	var session, err = mgo.Dial(connectionString)
 
 	if err != nil {
-		log.Fatal("Could not reach mongo db!\n", err)
+		log.Fatal("Could not reach mongo db!\nTried to connect at: ", connectionString, "\nBut got error: ", err)
 	}
 
 	log.Println("Connected to mongo db!")
