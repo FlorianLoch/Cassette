@@ -6,15 +6,18 @@ html(lang='en')
     meta(name="theme-color", content="#1DB954")
     link(rel='stylesheet', href='./style.css')
     link(rel="stylesheet", href="https://use.fontawesome.com/releases/v5.2.0/css/all.css", integrity="sha384-hWVjflwFxL6sNzntih27bfxkr27PmbbK/iSvJ+a4+0owXq79v+lsFkW54bOGbiDQ", crossorigin="anonymous")
-
+    include includes/modal.pug
 
     title ABHfS v0.1
   body
     #app
+      modal(v-if='showModal', @close='showModal = false')
+        p(slot='header') Ooops, something went wrong :/
+        p(slot='body') {{errorMessage}}
       .container
         .col-md-12
           .row
-            button.btn.btn-block.mb-4.mt-4.btn-success(type='button', v-on:click='storePlayerStateInNewSlot') Store current state
+            button.btn.btn-block.mb-4.mt-4.btn-primary(type='button', v-on:click='storePlayerStateInNewSlot') Store current state
         .row
           .col-md-4(v-for='(state, slotNo) in playerStates')
             .card.mb-4.box-shadow

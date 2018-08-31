@@ -6,6 +6,10 @@
     });
   });
 
+  Vue.component('modal', {
+    template: '#modal-template'
+  });
+
   const URL_CSRF_TOKEN = "/csrfToken";
   const URL_PLAYER_STATES = "/playerStates";
   const URL_ACTIVE_DEVICES = "/activeDevices"
@@ -18,7 +22,9 @@
     data: {
       message: 'Hello Vue!',
       playerStates: [],
-      activeDevices: []
+      activeDevices: [],
+      showModal: false,
+      errorMessage: ""
     },
     filters: {
       time: function (millis) {
@@ -32,7 +38,12 @@
       }
     },
     methods: {
+      showErrorMessage: function (msg) {
+        this.errorMessage = msg;
+        this.showModal = true;
+      },
       fetchCSRFToken: function (done) {
+        const self = this;
         this.$http.head(URL_CSRF_TOKEN).then(res => {
           csrfToken = res.headers.get(CSRF_HEADER_NAME);
 
@@ -40,7 +51,7 @@
 
           done();
         }, res => {
-          console.error("Could not fetch CSRF token!");
+          self.showErrorMessage("Could not fetch CSRF token!");
         });
       },
       fetchActiveDevices: function () {
@@ -49,7 +60,7 @@
           self.activeDevices = res.body;
           console.log(res.body);
         }, res => {
-          console.error("Requesting active devices from backend failed!", res)
+          self.showErrorMessage("Requesting active devices from backend failed: " + res.body);
         });
       },
       fetchPlayerStates: function () {
@@ -57,7 +68,7 @@
         this.$http.get(URL_PLAYER_STATES).then(res => {
           self.playerStates = res.body.states;
         }, res => {
-          console.error("Requesting player states from backend failed!", res)
+          self.showErrorMessage("Requesting player states from backend failed: " + res);
         });
       },
       storePlayerStateInSlot: function (slotNo) {
@@ -66,7 +77,7 @@
           console.info("Successfully stored player state in slot!");
           self.fetchPlayerStates();
         }, res => {
-          console.error(`Requesting to persist current player state in slot (${slotNo}) failed!`, res)
+          self.showErrorMessage(`Requesting to persist current player state in slot (${slotNo}) failed: ` + res.body);
         });
       },
       storePlayerStateInNewSlot: function () {
@@ -75,7 +86,7 @@
           console.info("Successfully stored player state in new slot!");
           self.fetchPlayerStates();
         }, res => {
-          console.error("Requesting to persist current player state failed!", res)
+          self.showErrorMessage("Requesting to persist current player state failed: " + res.body);
         });
       },
       removeSlot: function (slotNo) {
@@ -84,16 +95,16 @@
           console.info("Successfully removed slot!");
           self.playerStates.splice(slotNo, 1);
         }, res => {
-          console.error(`Requesting to delete slot (${slotNo}) failed!`, res)
+          self.showErrorMessage(`Requesting to delete slot (${slotNo}) failed: ` + res.body);
         });
       },
       restorePlayerStateFromSlot: function (slotNo, deviceID) {
         const url = `${URL_PLAYER_STATES}/${slotNo}/restore${(deviceID) ? `?deviceID=${deviceID}` : ""}`;
-
+        const self = this;
         this.$http.post(url).then(res => {
           console.info("Successfully restored player state!");
         }, res => {
-          console.error(`Requesting to restore player state from slot (${slotNo}) failed!`, res)
+          self.showErrorMessage(`Requesting to restore player state from slot (${slotNo}) failed: ` + res.body);
         });
       }
     },
@@ -103,3 +114,4 @@
     }
   });
 })();
+
