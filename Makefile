@@ -1,14 +1,14 @@
-default: run
+default: run_local
 
-.PHONY: prepare_webui webui run clean
+.PHONY: prepare_webui webui clean
+
+run_local: compile webui start_heroko_local
 
 prepare_webui:
 	npm install
 
 webui:
 	grunt
-
-run: webui compile start
 
 compile:
 	go install
@@ -18,8 +18,6 @@ start:
 
 start_heroko_local:
 	heroku local
-
-run_local: compile webui start_heroko_local
 
 clean:
 	rm -rf webui
