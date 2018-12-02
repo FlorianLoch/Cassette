@@ -41,7 +41,6 @@
 
 [[constraint]]
   branch = "master"
-  source = "https://github.com/FlorianLoch/spotify"
   name = "github.com/zmb3/spotify"
 
 [[constraint]]

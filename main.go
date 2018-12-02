@@ -31,30 +31,24 @@ const (
 	deviceIDQueryName      = "deviceID"
 )
 
-var port = "8080"
-var networkInterface = "localhost"
-
-var appURL = "http://localhost:8080/"
-
-// TODO Replace this by something better stored in an env
-var store = sessions.NewCookieStore([]byte("something-very-secret"))
-
 var (
-	redirectURL *url.URL
-	auth        spotify.Authenticator
-)
-
-var CSRF = csrf.Protect(
-	[]byte("a-32-byte-long-key-goes-here"),
-	csrf.RequestHeader("X-CSRF-Token"),
-	csrf.FieldName("CSRF_token"),
-	csrf.Secure(false), // TODO Change this in Prod
-	// csrf.ErrorHandler(http.HandlerFunc(hterverError(403))),
+	redirectURL      *url.URL
+	auth             spotify.Authenticator
+	store            = sessions.NewCookieStore([]byte("something-very-secret")) // TODO Replace this by something better stored in an env
+	port             = "8080"
+	networkInterface = "localhost"
+	appURL           = "http://localhost:8080/"
+	CSRF             = csrf.Protect(
+		[]byte("a-32-byte-long-key-goes-here"),
+		csrf.RequestHeader("X-CSRF-Token"),
+		csrf.FieldName("CSRF_token"),
+		csrf.Secure(false), // TODO Change this in Prod
+		// csrf.ErrorHandler(http.HandlerFunc(hterverError(403))),
+	)
 )
 
 func spotifyAuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Println("Called Spotify Auth middleware...:", r.URL.String())
 		session, _ := store.Get(r, "session")
 
 		// if there is no oauth token yet...
@@ -188,12 +182,27 @@ func main() {
 	// this route simple needs to be registered so that the catch all handler is able to get it?!
 	router.HandleFunc("/spotify-oauth-callback", func(w http.ResponseWriter, r *http.Request) {})
 
-	// TODO Rename handlers
 	router.HandleFunc("/csrfToken", csrfHandler).Methods("HEAD")
+
 	router.HandleFunc("/activeDevices", activeDevicesHandler).Methods("GET")
-	router.HandleFunc("/playerStates", storePostHandler).Methods("POST")
+
+	router.HandleFunc("/playerStates", func(w http.ResponseWriter, r *http.Request) {
+		storeHandler(w, r, -1)
+	}).Methods("POST")
+
 	router.HandleFunc("/playerStates", storeGetHandler).Methods("GET")
-	router.HandleFunc("/playerStates/{slot}", storePutHandler).Methods("PUT") // TODO add the filter for methods
+
+	router.HandleFunc("/playerStates/{slot}", func(w http.ResponseWriter, r *http.Request) {
+		slot, err := checkSlotParameter(r)
+
+		if err != nil {
+			http.Error(w, "Could not process request: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		storeHandler(w, r, slot)
+	}).Methods("PUT")
+
 	router.HandleFunc("/playerStates/{slot}", storeDeleteHandler).Methods("DELETE")
 
 	router.HandleFunc("/playerStates/{slot}/restore", restoreHandler).Methods("POST")
@@ -206,7 +215,7 @@ func main() {
 
 	log.Println("Webserver started on", interfacePort)
 
-	http.ListenAndServe(interfacePort, CSRF(context.ClearHandler(http.DefaultServeMux)))
+	log.Fatal(http.ListenAndServe(interfacePort, CSRF(context.ClearHandler(http.DefaultServeMux))))
 }
 
 func csrfHandler(w http.ResponseWriter, r *http.Request) {
@@ -219,7 +228,7 @@ func activeDevicesHandler(w http.ResponseWriter, r *http.Request) {
 	json, err := getActiveSpotifyDevices(getSpotifyClientForRequest(r))
 
 	if err != nil {
-		log.Println("Could not fetch list of active devices: ", err)
+		log.Println("Could not fetch list of active devices:", err)
 		http.Error(w, "Could not fetch list of active devices from Spotify!", http.StatusInternalServerError)
 	}
 
@@ -227,17 +236,11 @@ func activeDevicesHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(json)
 }
 
-func storePutHandler(w http.ResponseWriter, r *http.Request) {
-	var slot, err = checkSlotParameter(r)
+func storeHandler(w http.ResponseWriter, r *http.Request, slot int) {
+	err := storeCurrentPlayerState(getSpotifyClientForRequest(r), &getCurrentUser(r).ID, slot)
 
 	if err != nil {
-		http.Error(w, "Could not process request: "+err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	err = storeCurrentPlayerState(getSpotifyClientForRequest(r), &getCurrentUser(r).ID, slot)
-
-	if err != nil {
+		log.Println("Could not process request:", err)
 		http.Error(w, "Could not process request: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -251,8 +254,8 @@ func storeGetHandler(w http.ResponseWriter, r *http.Request) {
 	var json, err = json.Marshal(playerStates)
 
 	if err != nil {
-		http.Error(w, "Could not provide player states as JSON", http.StatusInternalServerError)
 		log.Println("Could not serialize playerStates to JSON:", err)
+		http.Error(w, "Could not provide player states as JSON", http.StatusInternalServerError)
 		return
 	}
 
@@ -264,6 +267,7 @@ func storeDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	var slot, err = checkSlotParameter(r)
 
 	if err != nil {
+		log.Println("Could not process request:", err)
 		http.Error(w, "Could not process request: "+err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -278,10 +282,6 @@ func storeDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	playerStates.States = append(playerStates.States[:slot], playerStates.States[slot+1:]...)
 
 	playerStatesDAO.SavePlayerStates(playerStates)
-}
-
-func storePostHandler(w http.ResponseWriter, r *http.Request) {
-	storeCurrentPlayerState(getSpotifyClientForRequest(r), &getCurrentUser(r).ID, -1)
 }
 
 func restoreHandler(w http.ResponseWriter, r *http.Request) {

@@ -16,12 +16,23 @@ var (
 	mongoURI        = strings.TrimSpace(os.Getenv("mongo_db_uri"))
 )
 
+func isContextResumable(playbackContext spotify.PlaybackContext) bool {
+	t := playbackContext.Type
+
+	return t == "album" || t == "playlist"
+}
+
 func storeCurrentPlayerState(client *spotify.Client, userID *string, slot int) error {
 	var currentlyPlaying, err = client.PlayerCurrentlyPlaying()
 
 	if err != nil {
 		log.Println("Could not read the current player state!", err)
 		return errors.New("could not read the current player state")
+	}
+
+	//Check whether this position could possibly restored afterwards
+	if !isContextResumable(currentlyPlaying.PlaybackContext) {
+		return errors.New("the current context cannot be restored! It is only possible to store playing positions in albums and playlists")
 	}
 
 	var playerStates = playerStatesDAO.LoadPlayerStates(*userID)
