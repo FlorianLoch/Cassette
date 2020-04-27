@@ -24,3 +24,11 @@ clean:
 
 deploy:
 	git push heroku master -f
+
+docker:
+	docker build . -t fdloch/audiobookhelperforspotify
+
+deploy_docker_heroku:
+	heroku container:login
+	heroku container:push web
+	heroku container:release web
