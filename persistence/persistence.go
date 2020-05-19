@@ -4,7 +4,6 @@ import (
 	"log"
 
 	"github.com/globalsign/mgo"
-	// "encoding/gob"
 )
 
 const (

@@ -1,9 +1,9 @@
 FROM golang AS gobuilder
-WORKDIR /go/src/github.com/florianloch/audioBookHelperForSpotify
+WORKDIR /go/src/github.com/florianloch/spotistate
 COPY . .
 RUN curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
 RUN dep ensure
-RUN GOOS=linux GARCH=amd64 CGO_ENABLED=0 go build -o audioBookHelperForSpotify .
+RUN GOOS=linux GARCH=amd64 CGO_ENABLED=0 go build -o spotistate .
 
 FROM node AS webuibuilder
 WORKDIR /build
@@ -17,6 +17,6 @@ RUN grunt
 FROM alpine
 RUN apk --no-cache add ca-certificates
 WORKDIR /app
-COPY --from=gobuilder /go/src/github.com/florianloch/audioBookHelperForSpotify/audioBookHelperForSpotify .
+COPY --from=gobuilder /go/src/github.com/florianloch/spotistate/spotistate .
 COPY --from=webuibuilder /build/webui ./webui
-CMD ["./audioBookHelperForSpotify"]
+CMD ["./spotistate"]

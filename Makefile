@@ -14,7 +14,7 @@ compile:
 	go install
 
 start:
-	audioBookHelperForSpotify
+	spotistate
 
 start_heroko_local:
 	heroku local
@@ -26,7 +26,7 @@ deploy:
 	git push heroku master -f
 
 docker:
-	docker build . -t fdloch/audiobookhelperforspotify
+	docker build . -t fdloch/spotistate
 
 deploy_docker_heroku:
 	heroku container:login

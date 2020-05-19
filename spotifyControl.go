@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/florianloch/audioBookHelperForSpotify/persistence"
+	"github.com/florianloch/spotistate/persistence"
 	"github.com/zmb3/spotify"
 )
 

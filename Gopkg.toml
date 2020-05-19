@@ -25,7 +25,7 @@
 #   unused-packages = true
 
 [metadata.heroku]
-  root-package = "github.com/florianloch/audioBookHelperForSpotify"
+  root-package = "github.com/florianloch/spotistate"
 
 [[constraint]]
   name = "github.com/gorilla/context"
