@@ -62,6 +62,7 @@ type PlayerState struct {
 	ArtistName         string `json:"artistName"`
 	Progress           int    `json:"progress"`
 	Duration           int    `json:"duration"`
+	ShuffleActivated   bool   `json:"shuffleActivated"`
 }
 
 type persistenceItem struct {
