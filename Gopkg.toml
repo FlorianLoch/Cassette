@@ -52,9 +52,5 @@
   unused-packages = true
 
 [[constraint]]
-  branch = "master"
-  name = "github.com/globalsign/mgo"
-
-[[constraint]]
   name = "github.com/gorilla/csrf"
   version = "1.5.1"
