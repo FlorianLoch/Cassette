@@ -1,42 +1,61 @@
 package persistence
 
 import (
+	"fmt"
 	"log"
+	"net/url"
+	"strings"
 
-	"github.com/globalsign/mgo"
+	"context"
+
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
 const (
-	collection = "player-states-per-user"
+	collectionName = "player-states-per-user"
 )
 
 type PlayerStatesDAO struct {
-	collection *mgo.Collection
+	collection *mongo.Collection
 }
 
 func NewPlayerStatesDAO(connectionString string) *PlayerStatesDAO {
-	var session, err = mgo.Dial(connectionString)
+	client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(connectionString))
+
+	if err == nil {
+		err = client.Ping(context.Background(), readpref.Primary())
+	}
 
 	if err != nil {
 		log.Fatal("Could not reach mongo db!\nTried to connect at: ", connectionString, "\nBut got error: ", err)
 	}
 
-	log.Println("Connected to mongo db!")
+	u, err := url.Parse(connectionString)
+	if err != nil {
+		log.Fatal("Could not fetch db name from connection string: ", err)
+	}
 
-	var db = session.DB("")
+	var dbName = strings.Trim(u.Path, "/")
+	if dbName == "" {
+		log.Fatal("DB name retrieved from connection string is empty.")
+	}
 
-	var collection = db.C(collection)
+	log.Println(fmt.Sprintf("Connected to mongo db backend! Will use '%s' as db.", dbName))
+
+	var collection = client.Database(dbName).Collection(collectionName)
 
 	return &PlayerStatesDAO{collection: collection}
 }
 
 func (p *PlayerStatesDAO) LoadPlayerStates(userID string) *PlayerStates {
 	var item persistenceItem
-	var err = p.collection.FindId(userID).One(&item)
-
+	var err = p.collection.FindOne(context.TODO(), bson.D{{"_id", userID}}).Decode(&item)
 	if err != nil {
-		if err == mgo.ErrNotFound {
-			return &PlayerStates{UserID: userID, States: make([]*PlayerState, 1)}
+		if err == mongo.ErrNoDocuments {
+			return &PlayerStates{UserID: userID, States: make([]*PlayerState, 0, 1)}
 		}
 
 		log.Fatal("Could not load previous player states from db!\n\t", err)
@@ -48,9 +67,13 @@ func (p *PlayerStatesDAO) LoadPlayerStates(userID string) *PlayerStates {
 func (p *PlayerStatesDAO) SavePlayerStates(playerStates *PlayerStates) {
 	var userID = playerStates.UserID
 
-	var wrapped = persistenceItem{Version: "1", UserID: userID, PlayerStates: playerStates.States}
+	opts := options.Update().SetUpsert(true)
 
-	p.collection.UpsertId(userID, &wrapped)
+	_, err := p.collection.UpdateOne(context.TODO(), bson.D{{"_id", userID}}, bson.D{{"$set", bson.D{{"playerstates", &playerStates.States}}}}, opts)
+
+	if err != nil {
+		log.Fatal("Could not write player states to db!\n\t", err)
+	}
 }
 
 type PlayerState struct {
@@ -67,8 +90,8 @@ type PlayerState struct {
 
 type persistenceItem struct {
 	Version      string
-	UserID       string `bson:"_id"`
-	PlayerStates []*PlayerState
+	UserID       string         `bson:"_id"`
+	PlayerStates []*PlayerState `bson:"playerstates"`
 }
 
 type PlayerStates struct {
