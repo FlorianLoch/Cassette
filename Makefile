@@ -1,10 +1,10 @@
 default: run_local
 
-.PHONY: prepare_webui webui clean deploy
+.PHONY: webui-prepare webui clean deploy
 
 run_local: compile webui start_heroko_local
 
-prepare_webui:
+webui-prepare:
 	npm install
 
 webui:
@@ -19,14 +19,17 @@ start:
 start_heroko_local:
 	heroku local
 
-clean:
-	rm -rf webui
-
 deploy:
 	git push heroku master -f
 
-docker:
+# docker-build: $(wildcard **/*.go) $(wildcard webui_src/**/*)
+# .make/docker-build
+docker-build:
 	docker build . -t fdloch/spotistate
+	mkdir -p .make/ && touch .make/docker-build
+
+docker-run:
+	docker run --env-file ./.env -p 8080:8080 fdloch/spotistate
 
 deploy_docker_heroku:
 	heroku container:login
