@@ -12,8 +12,8 @@ import (
 )
 
 var (
-	playerStatesDAO = persistence.NewPlayerStatesDAO(mongoURI)
 	mongoURI        = strings.TrimSpace(os.Getenv("mongo_db_uri"))
+	playerStatesDAO = persistence.NewPlayerStatesDAOFromConnectionString(mongoURI)
 )
 
 func isContextResumable(playbackContext spotify.PlaybackContext) bool {

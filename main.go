@@ -179,7 +179,7 @@ func main() {
 	router := mux.NewRouter()
 	router.Use(spotifyAuthMiddleware)
 	router.PathPrefix("/webui").Handler(http.StripPrefix("/webui/", http.FileServer(http.Dir(staticAssetsPath))))
-	// this route simple needs to be registered so that the catch all handler is able to get it?!
+	// this route simply needs to be registered so that the catch all handler is able to get it?!
 	router.HandleFunc("/spotify-oauth-callback", func(w http.ResponseWriter, r *http.Request) {})
 
 	router.HandleFunc("/csrfToken", csrfHandler).Methods("HEAD")
