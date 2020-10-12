@@ -145,7 +145,7 @@ func playerStateFromCurrentlyPlaying(currentlyPlaying *spotify.CurrentlyPlaying,
 	var joinedArtists = ""
 	for idx, artist := range item.Artists {
 		joinedArtists += artist.Name
-		if idx < len(item.Artists) {
+		if idx < len(item.Artists) - 1 {
 			joinedArtists += ", "
 		}
 	}
