@@ -2,7 +2,8 @@ default: run_local
 
 .PHONY: webui-prepare webui clean deploy
 
-run_local: compile webui start_heroko_local
+run_local: compile webui
+	make start
 
 webui-prepare:
 	npm install
@@ -15,9 +16,6 @@ compile:
 
 start:
 	spotistate
-
-start_heroko_local:
-	heroku local
 
 deploy:
 	git push heroku master -f

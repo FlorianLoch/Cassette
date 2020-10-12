@@ -8,44 +8,52 @@ html(lang='en')
     link(rel="stylesheet", href="https://use.fontawesome.com/releases/v5.2.0/css/all.css", integrity="sha384-hWVjflwFxL6sNzntih27bfxkr27PmbbK/iSvJ+a4+0owXq79v+lsFkW54bOGbiDQ", crossorigin="anonymous")
     include includes/modal.pug
 
-    title ABHfS v0.1
+    title Spotistate
   body
-    #app
+    #app.v-cloak
       modal(v-if='showModal', @close='showModal = false')
         p(slot='header') Ooops, something went wrong :/
         p(slot='body') {{errorMessage}}
+      .header
+        | Spotistate
       .container
-        .col-md-12
-          .row
-            button.btn.btn-block.mb-4.mt-4.btn-primary(type='button', v-on:click='storePlayerStateInNewSlot') Store current state
-        .row
+        .row.mt-4
           .col-md-4(v-for='(state, slotNo) in playerStates')
             .card.mb-4.box-shadow
               img.card-img-top(:src='state.albumArtURL', alt='Album art provided by Spotify')
               .card-body
-                h5.card-title {{state.trackName}}
-                p.card-text
-                  | {{state.albumName}}
-                  br
-                  | {{state.artistName}}
-                  br
-                  | {{state.progress | time}} / {{state.duration | time}}
-                .row
-                  .col-md-4.p-1
+                div.card-content
+                  h5.card-title {{state.trackName}}
+                  p.card-text
+                    i.fas.fa-compact-disc.spacer
+                    | {{state.albumName}}
+                  p.card-text
+                    i.fas.fa-user-friends.spacer
+                    | {{state.artistName}}
+                  p.card-text
+                    i.fas.fa-hourglass-end.spacer
+                    | {{state.progress | time}} / {{state.duration | time}}
+                .row.mt-2
+                  .col-lg-4.p-1
                     button.btn-block.btn.btn-primary(v-on:click='storePlayerStateInSlot(slotNo)')
                       i.fas.fa-stop-circle
-                  .col-md-4.p-1.btn-group.btn-block
-                    button.col-9.btn.btn-primary(v-on:click='restorePlayerStateFromSlot(slotNo)')
+                  .col-lg-4.p-1.btn-group.btn-block
+                    button.btn.btn-success(v-bind:class="{'col-8': activeDevices.length > 0}", v-on:click='restorePlayerStateFromSlot(slotNo)')
                       i.fas.fa-play-circle
-                    button.col-3.btn.btn-secondary.dropdown-toggle.dropdown-toggle-split(type="button", data-toggle="dropdown", aria-haspopup="true", aria-expanded="false")
-                      span.sr-only Toggle Dropdown
-                    .dropdown-menu
-                      btn.dropdown-item.disabled Start playback on:
-                      .dropdown-divider
-                      btn.dropdown-item(v-for="(device) in activeDevices", v-on:click="restorePlayerStateFromSlot(slotNo, device.id)") {{device.name}}
-                  .col-md-4.p-1
+                    template(v-if="activeDevices.length > 0")
+                      button.bcol-4.btn.btn-success.dropdown-toggle.dropdown-toggle-split(type="button", data-toggle="dropdown", aria-haspopup="true", aria-expanded="false")
+                        span.sr-only Toggle Dropdown
+                      .dropdown-menu
+                        btn.dropdown-item.disabled Start playback on:
+                        .dropdown-divider
+                        btn.dropdown-item(v-for="(device) in activeDevices", v-on:click="restorePlayerStateFromSlot(slotNo, device.id)") {{device.name}}
+                  .col-lg-4.p-1
                     button.btn-block.btn.btn-danger(v-on:click='removeSlot(slotNo)')
                       i.fas.fa-trash-alt
+          .col-md-4
+            .card.mb-4.box-shadow
+              button.btn.btn-block.btn-primary.store-state-btn(type='button', v-on:click='storePlayerStateInNewSlot')
+                i.fas.fa-stop-circle
         div
 
     script(src='./script.js')

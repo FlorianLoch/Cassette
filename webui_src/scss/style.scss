@@ -2,12 +2,28 @@
   box-shadow: 0 .25rem .75rem rgba(0, 0, 0, .05);
 }
 
+[v-cloak] {
+  display: none
+}
+
 body {
-  background-color: #191414;
+  background-color: rgb(30, 30, 30);
+}
+
+.header {
+  margin: 0px auto;
+  width: 100%;
+  padding: 5px;
+  background-color: rgb(22, 97, 122);
+  color: rgb(222, 222, 222);
 }
 
 .btn {
   font-size: 14pt;
+}
+
+.spacer {
+  margin-right: 10px;
 }
 
 // The following code is taken from https://vuejs.org/v2/examples/modal.html
@@ -51,6 +67,15 @@ body {
 
 .modal-default-button {
   float: right;
+}
+
+.card-content {
+  min-height: 250px;
+}
+
+.store-state-btn {
+  height: 400px;
+  font-size: 100pt;
 }
 
 /*
