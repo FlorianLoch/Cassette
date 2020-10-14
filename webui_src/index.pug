@@ -38,9 +38,9 @@ html(lang='en')
                     button.btn-block.btn.btn-primary(v-on:click='storePlayerStateInSlot(slotNo)')
                       i.fas.fa-stop-circle
                   .col-lg-4.p-1.btn-group.btn-block
-                    button.btn.btn-success(v-bind:class="{'col-8': activeDevices.length > 0}", v-on:click='restorePlayerStateFromSlot(slotNo)')
+                    button.btn.btn-success(v-bind:class="{'col-8': activeDevices.length > 1}", v-on:click='restorePlayerStateFromSlot(slotNo)')
                       i.fas.fa-play-circle
-                    template(v-if="activeDevices.length > 0")
+                    template(v-if="activeDevices.length > 1")
                       button.bcol-4.btn.btn-success.dropdown-toggle.dropdown-toggle-split(type="button", data-toggle="dropdown", aria-haspopup="true", aria-expanded="false")
                         span.sr-only Toggle Dropdown
                       .dropdown-menu
