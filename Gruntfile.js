@@ -17,7 +17,11 @@ module.exports = function (grunt) {
       pug: {
           compile: {
               options: {
-                  pretty: true
+                  pretty: true,
+                  data: {
+                      version: require("./package.json").version,
+                      buildDate: new Date().toISOString()
+                  }
               },
               files: {
                   "./webui/index.html": "./webui_src/index.pug"
