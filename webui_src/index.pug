@@ -14,15 +14,20 @@ html(lang='en')
       modal(v-if='showModal', @close='showModal = false')
         p(slot='header') Ooops, something went wrong :/
         p(slot='body') {{errorMessage}}
-      .header
-        | Spotistate
+      .header Spotistate
+      .active-device-list(v-bind:class="{'no-active-devices': activeDevices.length == 0}")
+        div(v-if="activeDevices.length > 0") Currently active device(s):
+          li(v-for="(device) in activeDevices") {{device.name}}
+        div(v-else) No active device!
+          button.btn.btn-primary.btn-sm(v-on:click="fetchActiveDevices()") Refresh
+
       .container
         .row.mt-4
           .col-md-4(v-for='(state, slotNo) in playerStates')
             .card.mb-4.box-shadow
               img.card-img-top(:src='state.albumArtURL', alt='Album art provided by Spotify')
               .card-body
-                div.card-content
+                .card-content
                   h5.card-title {{state.trackName}}
                   p.card-text
                     i.fas.fa-compact-disc.spacer
@@ -35,10 +40,10 @@ html(lang='en')
                     | {{state.progress | time}} / {{state.duration | time}}
                 .row.mt-2
                   .col-lg-4.p-1
-                    button.btn-block.btn.btn-primary(v-on:click='storePlayerStateInSlot(slotNo)')
+                    button.btn-block.btn.btn-primary(v-on:click='storePlayerStateInSlot(slotNo)', :disabled="activeDevices.length == 0")
                       i.fas.fa-stop-circle
                   .col-lg-4.p-1.btn-group.btn-block
-                    button.btn.btn-success(v-bind:class="{'col-8': activeDevices.length > 1}", v-on:click='restorePlayerStateFromSlot(slotNo)')
+                    button.btn.btn-success(v-bind:class="{'col-8': activeDevices.length > 1}", v-on:click='restorePlayerStateFromSlot(slotNo)', :disabled="activeDevices.length == 0")
                       i.fas.fa-play-circle
                     template(v-if="activeDevices.length > 1")
                       button.bcol-4.btn.btn-success.dropdown-toggle.dropdown-toggle-split(type="button", data-toggle="dropdown", aria-haspopup="true", aria-expanded="false")
@@ -52,7 +57,7 @@ html(lang='en')
                       i.fas.fa-trash-alt
           .col-md-4
             .card.mb-4.box-shadow
-              button.btn.btn-block.btn-primary.store-state-btn(type='button', v-on:click='storePlayerStateInNewSlot')
+              button.btn.btn-block.btn-primary.store-state-btn(type='button', v-on:click='storePlayerStateInNewSlot', :disabled="activeDevices.length == 0")
                 i.fas.fa-stop-circle
         div
       .footer

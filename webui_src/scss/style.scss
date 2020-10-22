@@ -23,6 +23,33 @@ body {
   }
 }
 
+.active-device-list {
+  width: 100%;
+  margin: 0px auto;
+  padding: 5px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  background-color: rgb(100, 100, 100);
+  color: rgb(222, 222, 222);
+
+  white-space: nowrap;
+  overflow: auto;
+
+  li {
+    display: inline;
+    list-style-type: none;
+  }
+
+  li + li::before {
+      content: ", ";
+  }
+}
+
+.no-active-devices {
+  background-color: rgb(252, 186, 3) !important;
+  color: black !important;
+}
+
 .btn {
   font-size: 14pt;
 }
