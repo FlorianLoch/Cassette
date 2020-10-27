@@ -177,12 +177,20 @@ func main() {
 	auth.SetAuthInfo(clientID, clientSecret)
 
 	router := mux.NewRouter()
+
+	router.HandleFunc("/csrfToken", csrfHandler).Methods("HEAD")
+
+	router.Use(func (nxt http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			log.Printf("%s \"%s\" (%v)", r.Method, r.URL.Path, r.Header)
+			nxt.ServeHTTP(w, r)
+		})
+	})
 	router.Use(spotifyAuthMiddleware)
-	router.PathPrefix("/webui").Handler(http.StripPrefix("/webui/", http.FileServer(http.Dir(staticAssetsPath))))
 	// this route simply needs to be registered so that the catch all handler is able to get it?!
 	router.HandleFunc("/spotify-oauth-callback", func(w http.ResponseWriter, r *http.Request) {})
 
-	router.HandleFunc("/csrfToken", csrfHandler).Methods("HEAD")
+	router.PathPrefix("/webui").Handler(http.StripPrefix("/webui/", http.FileServer(http.Dir(staticAssetsPath))))
 
 	router.HandleFunc("/activeDevices", activeDevicesHandler).Methods("GET")
 
