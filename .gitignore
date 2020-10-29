@@ -3,3 +3,4 @@ vendor/
 node_modules/
 webui/
 spotistate
+**/.DS_Store
