@@ -77,24 +77,26 @@ module.exports = function (grunt) {
               }
           }
       },
-    //   copy: {
-    //       favicon: {
-    //           src: "./webui_src/favicon.ico",
-    //           dest: "./webui/favicon.ico"
-    //       }
-    //   },
-    // Do not forget to add "copy" again to default task
+      copy: {
+          favicon: {
+            expand: true,
+            flatten: true,
+            src: ["./webui_src/favicon_different_sizes/*"],
+            dest: "./webui/",
+            filter: "isFile"
+          }
+      },
       clean: {
           options: {
               force: true
           },
-          babel: ["./webui/_build/*.babeled.js"],
-          css: ["./webui/_build/style.css"] // this one gets merged with dependencies to style.css
+          before: ["./webui"],
+          after: ["./webui/_build"]
       }
   });
 
   require("load-grunt-tasks")(grunt);
 
-  grunt.registerTask("default", ["pug", "babel", "sass", "concat", "clean"]);
+  grunt.registerTask("default", ["clean:before", "pug", "babel", "sass", "concat", "copy", "clean:after"]);
   grunt.registerTask("w", ["watch"]);
 };

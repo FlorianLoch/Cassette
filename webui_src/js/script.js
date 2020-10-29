@@ -1,15 +1,4 @@
 (() => {
-  Vue.http.interceptors.push((req) => {
-    var firstTry = true;
-    return (res) => {
-      // In case the requests results in an error 403 (forbidden) we try again.
-      // This can happen if the server gets restarted while the UI staying "unrefreshed".
-      if (res.status === 403) {
-        
-      }
-    }
-  });
-
   Vue.http.interceptors.push(() => {
     NProgress.start();
     return () => {
