@@ -184,6 +184,7 @@ func spotifyAuthMiddleware(next http.Handler) http.Handler {
 					if isDevMode {
 						log.Fatal("Could not get auth token for Spotify", err)
 					}
+					return
 				}
 
 				if st := r.FormValue("state"); st != randomState {
@@ -201,6 +202,7 @@ func spotifyAuthMiddleware(next http.Handler) http.Handler {
 					if isDevMode {
 						log.Fatal("Could not fetch information on current user!", err)
 					}
+					return
 				}
 
 				if isDevMode {
@@ -211,7 +213,17 @@ func spotifyAuthMiddleware(next http.Handler) http.Handler {
 				session.Values["spotify-oauth-token"] = tok
 
 				// redirect to the route initially requested
-				var initiallyRequestedRoute = session.Values["initially-requested-route"].(string)
+				var initiallyRequestedRoute string
+				if initiallyRequestedRoute, ok = session.Values["initially-requested-route"].(string); !ok {
+					// client should really not be here... this happens when requesting this route straight away not being
+					// redirecting via Spotify. Or in case the server's session store secret changes between two requests which should not
+					// be the case...
+					http.Error(w, "This route should not be requested directly.", http.StatusBadRequest)
+					if isDevMode {
+						log.Fatal("Client requested the callback route directly", err)
+					}
+					return
+				}
 				if isDevMode {
 					log.Printf("Client initially requested route '%s'", initiallyRequestedRoute)
 				}
