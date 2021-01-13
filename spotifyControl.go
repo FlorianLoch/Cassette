@@ -4,16 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
-	"os"
-	"strings"
 
 	"github.com/florianloch/spotistate/persistence"
-	"github.com/zmb3/spotify"
-)
 
-var (
-	mongoURI        = strings.TrimSpace(os.Getenv("mongo_db_uri"))
-	playerStatesDAO = persistence.NewPlayerStatesDAOFromConnectionString(mongoURI)
+	"github.com/zmb3/spotify"
 )
 
 func isContextResumable(playbackContext spotify.PlaybackContext) bool {
@@ -145,7 +139,7 @@ func playerStateFromCurrentlyPlaying(currentlyPlaying *spotify.CurrentlyPlaying,
 	var joinedArtists = ""
 	for idx, artist := range item.Artists {
 		joinedArtists += artist.Name
-		if idx < len(item.Artists) - 1 {
+		if idx < len(item.Artists)-1 {
 			joinedArtists += ", "
 		}
 	}

@@ -6,7 +6,7 @@ RUN GOOS=linux GARCH=amd64 CGO_ENABLED=0 go build -o spotistate .
 FROM node AS webuibuilder
 WORKDIR /build
 COPY . .
-# Don't use dependencies that have been build on the host system...
+# Don't use dependencies that have been built on the host system...
 RUN rm -rf node_modules
 RUN npm install
 RUN npm install -g grunt

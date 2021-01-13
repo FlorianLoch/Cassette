@@ -2,16 +2,17 @@ package main
 
 import (
 	"encoding/gob"
+	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 
-	"os"
-
-	"encoding/json"
+	"github.com/florianloch/spotistate/persistence"
+	"github.com/florianloch/spotistate/util"
 
 	"github.com/gorilla/context"
 	"github.com/gorilla/csrf"
@@ -22,174 +23,97 @@ import (
 )
 
 const (
-	clientIDEnvName        = "spotify_client_id"
-	secretKeyEnvName       = "spotify_secret_key"
-	authState              = "oauth_initiated"
-	sessionKeyForToken     = "spotify-oauth-token"
-	webUIStaticContentPath = "/webui"
-	jumpBackNSeconds       = 10
-	deviceIDQueryName      = "deviceID"
+	webUIStaticContentPath  = "/webui"
+	jumpBackNSeconds        = 10
+	defaultNetworkInterface = "localhost"
+	defaultPort             = "8080"
 )
 
 var (
-	redirectURL      *url.URL
-	auth             spotify.Authenticator
-	store            = sessions.NewCookieStore([]byte("something-very-secret")) // TODO Replace this by something better stored in an env
-	port             = "8080"
-	networkInterface = "localhost"
-	appURL           = "http://localhost:8080/"
-	CSRF             = csrf.Protect(
-		[]byte("a-32-byte-long-key-goes-here"),
-		csrf.RequestHeader("X-CSRF-Token"),
-		csrf.FieldName("CSRF_token"),
-		csrf.Secure(false), // TODO Change this in Prod
-		// csrf.ErrorHandler(http.HandlerFunc(hterverError(403))),
-	)
+	redirectURL     *url.URL
+	auth            spotify.Authenticator
+	store           *sessions.CookieStore
+	playerStatesDAO *persistence.PlayerStatesDAO
+	isDevMode       bool
 )
-
-func spotifyAuthMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		session, _ := store.Get(r, "session")
-
-		// if there is no oauth token yet...
-		if _, ok := session.Values[sessionKeyForToken]; !ok {
-			log.Println("No oauth token yet...")
-
-			// is this handler perhaps triggered by the client's browser calling the callback route?
-			if r.URL.Path == redirectURL.Path {
-				log.Println("Callback route called, processing...")
-
-				tok, err := auth.Token(authState, r)
-				if err != nil {
-					http.Error(w, "Couldn't get token", http.StatusForbidden)
-					log.Fatal(err)
-				}
-				if st := r.FormValue("state"); st != authState {
-					http.NotFound(w, r)
-					log.Fatalf("State mismatch: %s != %s\n", st, authState)
-				}
-
-				var client = _getSpotifyClientForRequest(tok)
-
-				currentUser, err := client.CurrentUser()
-
-				if err != nil {
-					log.Fatal("Could not fetch information on current user!", err)
-				}
-
-				log.Println("ID of current user:", currentUser.ID)
-
-				session.Values["user"] = currentUser
-				session.Values[sessionKeyForToken] = tok
-
-				// redirect to the route initially requested
-				var initiallyRequestedRoute = session.Values["initially-requested-route"].(string)
-				log.Println("Client initially requested route '" + initiallyRequestedRoute + "'!")
-
-				session.Save(r, w)
-				http.Redirect(w, r, initiallyRequestedRoute, http.StatusTemporaryRedirect)
-			} else {
-				// no token and not the callback route, we have to redirect the client to Spotify's authentification service
-				url := auth.AuthURL(authState)
-				log.Println("Redirecting to Spotify's authentication service: " + url)
-
-				session.Values["initially-requested-route"] = r.URL.Path
-
-				session.Save(r, w)
-				http.Redirect(w, r, url, http.StatusTemporaryRedirect)
-			}
-		} else {
-			next.ServeHTTP(w, r)
-		}
-	})
-}
-
-func getSpotifyClientForRequest(r *http.Request) *spotify.Client {
-	session, _ := store.Get(r, "session")
-
-	rawToken := session.Values[sessionKeyForToken]
-
-	return _getSpotifyClientForRequest(rawToken)
-}
-
-func getCurrentUser(r *http.Request) *spotify.PrivateUser {
-	session, _ := store.Get(r, "session")
-
-	rawUser := session.Values["user"]
-
-	var user = &spotify.PrivateUser{}
-	var ok = true
-	if user, ok = rawUser.(*spotify.PrivateUser); !ok {
-		// type-assert failed
-		log.Fatal("Could not type-assert the stored user!")
-	}
-
-	return user
-}
-
-func _getSpotifyClientForRequest(rawToken interface{}) *spotify.Client {
-	var tok = &oauth2.Token{}
-	var ok = true
-	if tok, ok = rawToken.(*oauth2.Token); !ok {
-		// type-assert failed
-		log.Fatal("Could not type-assert the stored token!")
-	}
-
-	client := auth.NewClient(tok)
-
-	return &client
-}
 
 type m map[string]interface{}
 
 func main() {
-	if os.Getenv("PORT") != "" {
-		port = os.Getenv("PORT")
-	}
+	isDevMode = os.Getenv("ENV") == "DEV"
+	log.Printf("Running in DEV mode: %t", isDevMode)
 
-	if os.Getenv("APP_URL") != "" {
-		appURL = os.Getenv("APP_URL")
-	}
-
+	var networkInterface = defaultNetworkInterface
 	if os.Getenv("NETWORK_INTERFACE") != "" {
 		networkInterface = os.Getenv("NETWORK_INTERFACE")
 	}
 
+	var port = defaultPort
+	if os.Getenv("PORT") != "" {
+		port = os.Getenv("PORT")
+	}
+
+	var appURL = "http://" + networkInterface + ":" + port + "/"
+	if os.Getenv("APP_URL") != "" {
+		appURL = os.Getenv("APP_URL")
+	}
+
+	var secret32Bytes, err = util.Make32ByteSecret(os.Getenv("SECRET"))
+	if err != nil {
+		log.Fatal("Could not generate secret. Aborting.", err)
+	}
+
+	log.Printf("%x", secret32Bytes)
+
+	if os.Getenv("MONGO_DB_URI") != "" {
+		playerStatesDAO = persistence.NewPlayerStatesDAOFromConnectionString(os.Getenv("MONGO_DB_URI"))
+
+	} else {
+		log.Fatal("No URI for connecting to MongoDB given. Aborting.")
+	}
+
+	store = sessions.NewCookieStore(secret32Bytes)
+
 	redirectURL, _ = url.Parse(appURL + "spotify-oauth-callback")
 	auth = spotify.NewAuthenticator(redirectURL.String(), spotify.ScopeUserReadCurrentlyPlaying, spotify.ScopeUserReadPlaybackState, spotify.ScopeUserModifyPlaybackState)
 
-	interfacePort := networkInterface + ":" + port
+	sessions.NewCookieStore([]byte("something-very-secret"))
 
 	gob.Register(&spotify.PrivateUser{})
 	gob.Register(&oauth2.Token{})
 	gob.Register(&m{})
 
-	var cwd, _ = os.Getwd()
-	var staticAssetsPath = cwd + webUIStaticContentPath
-
-	log.Println(staticAssetsPath)
-
-	var clientID = strings.TrimSpace(os.Getenv(clientIDEnvName))
-	var clientSecret = strings.TrimSpace(os.Getenv(secretKeyEnvName))
+	var clientID = strings.TrimSpace(os.Getenv("SPOTIFY_CLIENT_ID"))
+	var clientSecret = strings.TrimSpace(os.Getenv("SPOTIFY_CLIENT_KEY"))
 
 	log.Printf("Credentials to be used authenticating with Spotify:\n\tClient ID: %s\n\tClient secret: %s\n", clientID, clientSecret)
 
 	auth.SetAuthInfo(clientID, clientSecret)
 
+	var CSRF = csrf.Protect(
+		secret32Bytes,
+		csrf.RequestHeader("X-CSRF-Token"),
+		csrf.Secure(!isDevMode),
+	)
+
 	router := mux.NewRouter()
 
-	router.HandleFunc("/csrfToken", csrfHandler).Methods("HEAD")
-
-	router.Use(func (nxt http.Handler) http.Handler {
+	router.Use(func(nxt http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			log.Printf("%s \"%s\" (%v)", r.Method, r.URL.Path, r.Header)
 			nxt.ServeHTTP(w, r)
 		})
 	})
+
 	router.Use(spotifyAuthMiddleware)
-	// this route simply needs to be registered so that the catch all handler is able to get it?!
+	// this route simply needs to be registered so that the catch-all-handler is able to get it?!
 	router.HandleFunc("/spotify-oauth-callback", func(w http.ResponseWriter, r *http.Request) {})
 
+	router.HandleFunc("/csrfToken", csrfHandler).Methods("HEAD")
+
+	var cwd, _ = os.Getwd()
+	var staticAssetsPath = cwd + webUIStaticContentPath
+	log.Printf("Loading assets from: %s", staticAssetsPath)
 	router.PathPrefix("/webui").Handler(http.StripPrefix("/webui/", http.FileServer(http.Dir(staticAssetsPath))))
 
 	router.HandleFunc("/activeDevices", activeDevicesHandler).Methods("GET")
@@ -221,9 +145,129 @@ func main() {
 
 	http.Handle("/", router)
 
+	var interfacePort = networkInterface + ":" + port
 	log.Println("Webserver started on", interfacePort)
-
 	log.Fatal(http.ListenAndServe(interfacePort, CSRF(context.ClearHandler(http.DefaultServeMux))))
+}
+
+func spotifyAuthMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		session, _ := store.Get(r, "session")
+
+		// if there is no oauth token yet...
+		if _, ok := session.Values["spotify-oauth-token"]; !ok {
+			// this state is used during oauth negotiation in order to prevent CSRF
+			var randomState string
+			if randomState, ok := session.Values["oauth-random-csrf-state"]; !ok {
+				randomSecret, err := util.Make32ByteSecret("")
+				if err != nil {
+					log.Fatal("Failed generating a random secret for OAuth negotiation", err)
+				}
+				randomState = string(randomSecret)
+
+				session.Values["oauth-random-csrf-state"] = randomState
+			}
+
+			if isDevMode {
+				log.Println("No oauth token yet...")
+			}
+
+			// the clients browser calls this route being redirected from Spotify's authentication system
+			if r.URL.Path == redirectURL.Path {
+				if isDevMode {
+					log.Println("Callback route called, processing...")
+				}
+
+				tok, err := auth.Token(randomState, r)
+				if err != nil {
+					http.Error(w, "Could not get auth token for Spotify", http.StatusForbidden)
+					if isDevMode {
+						log.Fatal("Could not get auth token for Spotify", err)
+					}
+				}
+
+				if st := r.FormValue("state"); st != randomState {
+					http.NotFound(w, r)
+					if isDevMode {
+						log.Fatalf("State mismatch: %s != %s\n", st, randomState)
+					}
+				}
+
+				var client = getSpotifyClientFromToken(tok)
+
+				currentUser, err := client.CurrentUser()
+				if err != nil {
+					http.Error(w, "Could not fetch information on user from Spotify", http.StatusInternalServerError)
+					if isDevMode {
+						log.Fatal("Could not fetch information on current user!", err)
+					}
+				}
+
+				if isDevMode {
+					log.Println("ID of current user:", currentUser.ID)
+				}
+
+				session.Values["user"] = currentUser
+				session.Values["spotify-oauth-token"] = tok
+
+				// redirect to the route initially requested
+				var initiallyRequestedRoute = session.Values["initially-requested-route"].(string)
+				if isDevMode {
+					log.Printf("Client initially requested route '%s'", initiallyRequestedRoute)
+				}
+
+				session.Save(r, w)
+				http.Redirect(w, r, initiallyRequestedRoute, http.StatusTemporaryRedirect)
+			} else {
+				// no token and not the callback route, we have to redirect the client to Spotify's authentification service
+				var redirectTo = auth.AuthURL(randomState)
+				if isDevMode {
+					log.Printf("Redirecting to Spotify's authentication service: %s", redirectTo)
+				}
+
+				session.Values["initially-requested-route"] = r.URL.Path
+
+				session.Save(r, w)
+				http.Redirect(w, r, redirectTo, http.StatusTemporaryRedirect)
+			}
+		} else {
+			next.ServeHTTP(w, r)
+		}
+	})
+}
+
+func getSpotifyClientFromRequest(r *http.Request) *spotify.Client {
+	session, _ := store.Get(r, "session")
+
+	rawToken := session.Values["spotify-oauth-token"]
+
+	return getSpotifyClientFromToken(rawToken)
+}
+
+func getCurrentUser(r *http.Request) *spotify.PrivateUser {
+	session, _ := store.Get(r, "session")
+
+	rawUser := session.Values["user"]
+
+	var user = &spotify.PrivateUser{}
+	var ok = true
+	if user, ok = rawUser.(*spotify.PrivateUser); !ok {
+		log.Fatal("Could not type-assert the stored user!")
+	}
+
+	return user
+}
+
+func getSpotifyClientFromToken(rawToken interface{}) *spotify.Client {
+	var tok = &oauth2.Token{}
+	var ok = true
+	if tok, ok = rawToken.(*oauth2.Token); !ok {
+		log.Fatal("Could not type-assert the stored token!")
+	}
+
+	client := auth.NewClient(tok)
+
+	return &client
 }
 
 func csrfHandler(w http.ResponseWriter, r *http.Request) {
@@ -233,7 +277,7 @@ func csrfHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func activeDevicesHandler(w http.ResponseWriter, r *http.Request) {
-	json, err := getActiveSpotifyDevices(getSpotifyClientForRequest(r))
+	json, err := getActiveSpotifyDevices(getSpotifyClientFromRequest(r))
 
 	if err != nil {
 		log.Println("Could not fetch list of active devices:", err)
@@ -245,7 +289,7 @@ func activeDevicesHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func storeHandler(w http.ResponseWriter, r *http.Request, slot int) {
-	err := storeCurrentPlayerState(getSpotifyClientForRequest(r), &getCurrentUser(r).ID, slot)
+	err := storeCurrentPlayerState(getSpotifyClientFromRequest(r), &getCurrentUser(r).ID, slot)
 
 	if err != nil {
 		log.Println("Could not process request:", err)
@@ -295,14 +339,14 @@ func storeDeleteHandler(w http.ResponseWriter, r *http.Request) {
 func restoreHandler(w http.ResponseWriter, r *http.Request) {
 	var slot, err = checkSlotParameter(r)
 
-	var deviceID = r.URL.Query().Get(deviceIDQueryName)
+	var deviceID = r.URL.Query().Get("deviceID")
 
 	if err != nil {
 		http.Error(w, "Could not process request: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	err = restorePlayerState(getSpotifyClientForRequest(r), &getCurrentUser(r).ID, slot, deviceID)
+	err = restorePlayerState(getSpotifyClientFromRequest(r), &getCurrentUser(r).ID, slot, deviceID)
 
 	if err != nil {
 		http.Error(w, "Could not process request: "+err.Error(), http.StatusInternalServerError)
