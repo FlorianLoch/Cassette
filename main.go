@@ -42,7 +42,7 @@ type m map[string]interface{}
 
 func main() {
 	isDevMode = os.Getenv("ENV") == "DEV"
-	log.Printf("Running in DEV mode: %t", isDevMode)
+	log.Printf("Running in DEV mode: %t. Being less verbose. Set environment variable 'ENV' to 'DEV' to activate.", isDevMode)
 
 	var networkInterface = defaultNetworkInterface
 	if os.Getenv("NETWORK_INTERFACE") != "" {
@@ -99,12 +99,14 @@ func main() {
 
 	router := mux.NewRouter()
 
-	router.Use(func(nxt http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			log.Printf("%s \"%s\" (%v)", r.Method, r.URL.Path, r.Header)
-			nxt.ServeHTTP(w, r)
+	if isDevMode {
+		router.Use(func(nxt http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				log.Printf("%s \"%s\" (%v)", r.Method, r.URL.Path, r.Header)
+				nxt.ServeHTTP(w, r)
+			})
 		})
-	})
+	}
 
 	router.Use(spotifyAuthMiddleware)
 	// this route simply needs to be registered so that the catch-all-handler is able to get it?!

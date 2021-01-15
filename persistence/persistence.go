@@ -59,7 +59,7 @@ func (p *PlayerStatesDAO) LoadPlayerStates(userID string) *PlayerStates {
 	hashedUserID := hashUserID(userID)
 
 	var item persistenceItem
-	err := p.collection.FindOne(context.TODO(), bson.D{{"_id", hashedUserID}}).Decode(&item)
+	err := p.collection.FindOne(context.TODO(), bson.D{{Key: "_id", Value: hashedUserID}}).Decode(&item)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return &PlayerStates{UserID: userID, States: make([]*PlayerState, 0, 1)}
@@ -76,7 +76,7 @@ func (p *PlayerStatesDAO) SavePlayerStates(playerStates *PlayerStates) {
 
 	opts := options.Update().SetUpsert(true)
 
-	_, err := p.collection.UpdateOne(context.TODO(), bson.D{{"_id", hashedUserID}}, bson.D{{"$set", bson.D{{"playerStates", &playerStates.States}, {"version", "2"}}}}, opts)
+	_, err := p.collection.UpdateOne(context.TODO(), bson.D{{Key: "_id", Value: hashedUserID}}, bson.D{{Key: "$set", Value: bson.D{{Key: "playerStates", Value: &playerStates.States}, {Key: "version", Value: "2"}}}}, opts)
 
 	if err != nil {
 		log.Fatal("Could not write player states to db!\n\t", err)
