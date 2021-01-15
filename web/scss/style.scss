@@ -61,6 +61,25 @@ body {
   margin-right: 10px;
 }
 
+// Make the progressbar a little bolder and more fancy in general
+$progress-bar: #FFF;
+
+#nprogress .bar {
+  height: 10px !important;
+  background: $progress-bar !important;
+}
+
+#nprogress .peg {
+  box-shadow: 0 0 10px $progress-bar, 0 0 5px $progress-bar !important;
+}
+
+// Spinner is currently deactivated
+#nprogress .spinner-icon {
+  border-top-color: $progress-bar !important;
+  border-left-color: $progress-bar !important;
+  border-radius: 50%;
+}
+
 // The following code is taken from https://vuejs.org/v2/examples/modal.html
 .modal-mask {
   position: fixed;

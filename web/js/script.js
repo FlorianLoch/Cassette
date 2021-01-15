@@ -1,4 +1,6 @@
 (() => {
+  NProgress.configure({ showSpinner: false });
+
   Vue.http.interceptors.push(() => {
     NProgress.start();
     return () => {
