@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/florianloch/spotistate/persistence"
+	"github.com/florianloch/spotistate/routes"
 	"github.com/florianloch/spotistate/util"
 
 	"github.com/gorilla/context"
@@ -23,7 +24,7 @@ import (
 )
 
 const (
-	webUIStaticContentPath  = "/webui"
+	webStaticContentPath    = "/web_dist"
 	jumpBackNSeconds        = 10
 	defaultNetworkInterface = "localhost"
 	defaultPort             = "8080"
@@ -111,11 +112,6 @@ func main() {
 
 	router.HandleFunc("/csrfToken", csrfHandler).Methods("HEAD")
 
-	var cwd, _ = os.Getwd()
-	var staticAssetsPath = cwd + webUIStaticContentPath
-	log.Printf("Loading assets from: %s", staticAssetsPath)
-	router.PathPrefix("/webui").Handler(http.StripPrefix("/webui/", http.FileServer(http.Dir(staticAssetsPath))))
-
 	router.HandleFunc("/activeDevices", activeDevicesHandler).Methods("GET")
 
 	router.HandleFunc("/playerStates", func(w http.ResponseWriter, r *http.Request) {
@@ -139,9 +135,19 @@ func main() {
 
 	router.HandleFunc("/playerStates/{slot}/restore", restoreHandler).Methods("POST")
 
-	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/webui/", http.StatusTemporaryRedirect)
+	// in order to keep existing session working we keep the old assets route but forward clients
+	router.HandleFunc("/webui/", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/", http.StatusPermanentRedirect)
 	})
+
+	// provide the webapp following the SPA pattern: all non-API routes not being able
+	// to be resolved within the assets directory will return the webapp entry point.
+	// ATTENTION: This is a catch-all route; every route declared after this one will not match any request!
+	var cwd, _ = os.Getwd()
+	var staticAssetsPath = cwd + webStaticContentPath
+	var spaHandler = routes.NewSpaHandler(staticAssetsPath, "index.html")
+	log.Printf("Loading assets from: %s", staticAssetsPath)
+	router.PathPrefix("/").Handler(spaHandler)
 
 	http.Handle("/", router)
 

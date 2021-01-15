@@ -1,6 +1,6 @@
 .env
 vendor/
 node_modules/
-webui/
+web_dist/
 spotistate
 **/.DS_Store

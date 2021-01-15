@@ -2,15 +2,15 @@ module.exports = function (grunt) {
   grunt.initConfig({
       watch: {
           js: {
-              files: ["./webui_src/js/**/*.js"],
+              files: ["./web/js/**/*.js"],
               tasks: ["babel", "concat:js", "clean:babel"]
           },
           sass: {
-              files: ["./webui_src/scss/**/*.scss"],
+              files: ["./web/scss/**/*.scss"],
               tasks: ["sass", "concat:css", "clean:css"]
           },
           pug: {
-              files: ["./webui_src/**/*.pug"],
+              files: ["./web/**/*.pug"],
               tasks: ["pug"]
           }
       },
@@ -24,7 +24,7 @@ module.exports = function (grunt) {
                   }
               },
               files: {
-                  "./webui/index.html": "./webui_src/index.pug"
+                  "./web_dist/index.html": "./web/index.pug"
               }
           }
       },
@@ -36,9 +36,9 @@ module.exports = function (grunt) {
           dist: {
               files: [{
                   expand: true,
-                  cwd: "./webui_src/js",
+                  cwd: "./web/js",
                   src: ["**/*.js"],
-                  dest: "./webui/_build",
+                  dest: "./web_dist/_build",
                   ext: ".babeled.js"
               }]
           }
@@ -50,29 +50,29 @@ module.exports = function (grunt) {
           },
           dist: {
               files: {
-                  "./webui/_build/style.css": "./webui_src/scss/style.scss"
+                  "./web_dist/_build/style.css": "./web/scss/style.scss"
               }
           }
       },
       concat: {
           js: {
               files: {
-                  "./webui/script.js": [
+                  "./web_dist/script.js": [
                       "./node_modules/jquery/dist/jquery.slim.min.js",
                       "./node_modules/bootstrap/dist/js/bootstrap.bundle.min.js",
                       "./node_modules/nprogress/nprogress.js",
                       "./node_modules/vue/dist/vue.min.js",
                       "./node_modules/vue-resource/dist/vue-resource.min.js",
-                      "./webui/_build/*.babeled.js"
+                      "./web_dist/_build/*.babeled.js"
                   ]
               }
           },
           css: {
               files: {
-                  "./webui/style.css": [
+                  "./web_dist/style.css": [
                       "./node_modules/bootstrap/dist/css/bootstrap.min.css",
                       "./node_modules/nprogress/nprogress.css",
-                      "./webui/_build/style.css"
+                      "./web_dist/_build/style.css"
                   ]
               }
           }
@@ -81,8 +81,8 @@ module.exports = function (grunt) {
           favicon: {
             expand: true,
             flatten: true,
-            src: ["./webui_src/favicon_different_sizes/*"],
-            dest: "./webui/",
+            src: ["./web/favicon_different_sizes/*"],
+            dest: "./web_dist/",
             filter: "isFile"
           }
       },
@@ -90,8 +90,8 @@ module.exports = function (grunt) {
           options: {
               force: true
           },
-          before: ["./webui"],
-          after: ["./webui/_build"]
+          before: ["./web_dist"],
+          after: ["./web_dist/_build"]
       }
   });
 

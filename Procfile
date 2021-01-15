@@ -1,1 +1,1 @@
-web: make webui && make start
+web: make web_dist && make start

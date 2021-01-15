@@ -1,14 +1,14 @@
 default: run_local
 
-.PHONY: webui-prepare webui clean deploy
+.PHONY: web_dist-prepare web_dist clean deploy
 
-run_local: install webui
+run_local: install web_dist
 	spotistate
 
-webui-prepare:
+web_dist-prepare:
 	npm install
 
-webui:
+web_dist:
 	grunt
 
 install:

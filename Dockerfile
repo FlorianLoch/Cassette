@@ -3,7 +3,7 @@ WORKDIR /src/github.com/florianloch/spotistate
 COPY . .
 RUN GOOS=linux GARCH=amd64 CGO_ENABLED=0 go build -o spotistate .
 
-FROM node AS webuibuilder
+FROM node AS web_distbuilder
 WORKDIR /build
 COPY . .
 # Don't use dependencies that have been built on the host system...
@@ -16,5 +16,5 @@ FROM alpine
 RUN apk --no-cache add ca-certificates
 WORKDIR /app
 COPY --from=gobuilder /src/github.com/florianloch/spotistate/spotistate .
-COPY --from=webuibuilder /build/webui ./webui
+COPY --from=web_distbuilder /build/web_dist ./web_dist
 CMD ["./spotistate"]
