@@ -15,7 +15,7 @@
   const URL_CSRF_TOKEN = "/csrfToken";
   const URL_PLAYER_STATES = "/playerStates";
   const URL_ACTIVE_DEVICES = "/activeDevices"
-  const CSRF_HEADER_NAME = "X-CSRF-Token";
+  const CSRF_HEADER_NAME = "cassette_csrf_token";
 
   // TODO Add error handlers
 

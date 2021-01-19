@@ -25,9 +25,20 @@ import (
 
 const (
 	webStaticContentPath    = "/web_dist"
+	sessionCookieName       = "cassette_session"
+	csrfTokenName           = "cassette_csrf_token"
 	jumpBackNSeconds        = 10
 	defaultNetworkInterface = "localhost"
 	defaultPort             = "8080"
+	// names of envs
+	envENV                 = "CASSETTE_ENV"
+	envNetworkInterface    = "CASSETTE_NETWORK_INTERFACE"
+	envPort                = "CASSETTE_PORT"
+	envAppURL              = "CASSETTE_APP_URL"
+	envSecret              = "CASSETTE_SECRET"
+	envMongoURI            = "CASSETTE_MONGODB_URI"
+	envSpotifyClientID     = "CASSETTE_SPOTIFY_CLIENT_ID"
+	envSpotifyClientSecret = "CASSETTE_SPOTIFY_CLIENT_KEY"
 )
 
 var (
@@ -41,59 +52,48 @@ var (
 type m map[string]interface{}
 
 func main() {
-	isDevMode = os.Getenv("ENV") == "DEV"
+	isDevMode = getEnv(envENV, "") == "DEV"
 	log.Printf("Running in DEV mode: %t. Being less verbose. Set environment variable 'ENV' to 'DEV' to activate.", isDevMode)
 
-	var networkInterface = defaultNetworkInterface
-	if os.Getenv("NETWORK_INTERFACE") != "" {
-		networkInterface = os.Getenv("NETWORK_INTERFACE")
-	}
+	var networkInterface = getEnv(envNetworkInterface, defaultNetworkInterface)
+	// we also have to check for "PORT" as that is how Heroku tells the app where to listen
+	var port = getEnv(envPort, getEnv("PORT", defaultPort))
+	var appURL = getEnv(envAppURL, "http://"+networkInterface+":"+port+"/")
 
-	var port = defaultPort
-	if os.Getenv("PORT") != "" {
-		port = os.Getenv("PORT")
-	}
-
-	var appURL = "http://" + networkInterface + ":" + port + "/"
-	if os.Getenv("APP_URL") != "" {
-		appURL = os.Getenv("APP_URL")
-	}
-
-	var secret32Bytes, err = util.Make32ByteSecret(os.Getenv("SECRET"))
+	var secret32Bytes, err = util.Make32ByteSecret(getEnv(envSecret, ""))
 	if err != nil {
 		log.Fatal("Could not generate secret. Aborting.", err)
 	}
 
 	log.Printf("%x", secret32Bytes)
 
-	if os.Getenv("MONGO_DB_URI") != "" {
-		playerStatesDAO = persistence.NewPlayerStatesDAOFromConnectionString(os.Getenv("MONGO_DB_URI"))
-
-	} else {
+	var mongoDBURI = getEnv(envMongoURI, "")
+	if mongoDBURI == "" {
 		log.Fatal("No URI for connecting to MongoDB given. Aborting.")
 	}
+	playerStatesDAO = persistence.NewPlayerStatesDAOFromConnectionString(mongoDBURI)
 
 	store = sessions.NewCookieStore(secret32Bytes)
 
 	redirectURL, _ = url.Parse(appURL + "spotify-oauth-callback")
 	auth = spotify.NewAuthenticator(redirectURL.String(), spotify.ScopeUserReadCurrentlyPlaying, spotify.ScopeUserReadPlaybackState, spotify.ScopeUserModifyPlaybackState)
 
-	sessions.NewCookieStore([]byte("something-very-secret"))
-
 	gob.Register(&spotify.PrivateUser{})
 	gob.Register(&oauth2.Token{})
 	gob.Register(&m{})
 
-	var clientID = strings.TrimSpace(os.Getenv("SPOTIFY_CLIENT_ID"))
-	var clientSecret = strings.TrimSpace(os.Getenv("SPOTIFY_CLIENT_KEY"))
+	var clientID = getEnv(envSpotifyClientID, "")
+	var clientSecret = getEnv(envSpotifyClientSecret, "")
 
-	log.Printf("Credentials to be used authenticating with Spotify:\n\tClient ID: %s\n\tClient secret: %s\n", clientID, clientSecret)
+	if clientID == "" || clientSecret == "" {
+		log.Fatalf("Please make sure '%s' and '%s' are set. Aborting.", envSpotifyClientID, envSpotifyClientSecret)
+	}
 
 	auth.SetAuthInfo(clientID, clientSecret)
 
 	var CSRF = csrf.Protect(
 		secret32Bytes,
-		csrf.RequestHeader("X-CSRF-Token"),
+		csrf.RequestHeader(csrfTokenName),
 		csrf.Secure(!isDevMode),
 	)
 
@@ -160,7 +160,7 @@ func main() {
 
 func spotifyAuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		session, _ := store.Get(r, "session")
+		session, _ := store.Get(r, sessionCookieName)
 
 		// if there is no oauth token yet...
 		if _, ok := session.Values["spotify-oauth-token"]; !ok {
@@ -257,7 +257,7 @@ func spotifyAuthMiddleware(next http.Handler) http.Handler {
 }
 
 func getSpotifyClientFromRequest(r *http.Request) *spotify.Client {
-	session, _ := store.Get(r, "session")
+	session, _ := store.Get(r, sessionCookieName)
 
 	rawToken := session.Values["spotify-oauth-token"]
 
@@ -265,7 +265,7 @@ func getSpotifyClientFromRequest(r *http.Request) *spotify.Client {
 }
 
 func getCurrentUser(r *http.Request) *spotify.PrivateUser {
-	session, _ := store.Get(r, "session")
+	session, _ := store.Get(r, sessionCookieName)
 
 	rawUser := session.Values["user"]
 
@@ -291,7 +291,7 @@ func getSpotifyClientFromToken(rawToken interface{}) *spotify.Client {
 }
 
 func csrfHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("X-CSRF-Token", csrf.Token(r))
+	w.Header().Set(csrfTokenName, csrf.Token(r))
 
 	w.WriteHeader(http.StatusOK)
 }
@@ -393,4 +393,15 @@ func checkSlotParameter(r *http.Request) (int, error) {
 	}
 
 	return slot, nil
+}
+
+func getEnv(envName, defaultValue string) string {
+	var val, exists = os.LookupEnv(envName)
+
+	if !exists {
+		log.Printf("WARNING: '%s' is not set. Using default value ('%s').", envName, defaultValue)
+		return defaultValue
+	}
+
+	return strings.TrimSpace(val)
 }
