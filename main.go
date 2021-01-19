@@ -24,9 +24,9 @@ import (
 )
 
 const (
-	webStaticContentPath    = "/web_dist"
 	sessionCookieName       = "cassette_session"
 	csrfTokenName           = "cassette_csrf_token"
+	consentCookieName       = "cassette_consent"
 	jumpBackNSeconds        = 10
 	defaultNetworkInterface = "localhost"
 	defaultPort             = "8080"
@@ -42,11 +42,12 @@ const (
 )
 
 var (
-	redirectURL     *url.URL
-	auth            spotify.Authenticator
-	store           *sessions.CookieStore
-	playerStatesDAO *persistence.PlayerStatesDAO
-	isDevMode       bool
+	redirectURL          *url.URL
+	auth                 spotify.Authenticator
+	store                *sessions.CookieStore
+	playerStatesDAO      *persistence.PlayerStatesDAO
+	isDevMode            bool
+	webStaticContentPath = "/web_dist"
 )
 
 type m map[string]interface{}
@@ -64,8 +65,6 @@ func main() {
 	if err != nil {
 		log.Fatal("Could not generate secret. Aborting.", err)
 	}
-
-	log.Printf("%x", secret32Bytes)
 
 	var mongoDBURI = getEnv(envMongoURI, "")
 	if mongoDBURI == "" {
@@ -108,8 +107,11 @@ func main() {
 		})
 	}
 
+	router.Use(consentMiddleware)
 	router.Use(spotifyAuthMiddleware)
-	// this route simply needs to be registered so that the catch-all-handler is able to get it?!
+
+	// this route simply needs to be registered so that the middleware registered at the router gets invoked
+	// on requests for it
 	router.HandleFunc("/spotify-oauth-callback", func(w http.ResponseWriter, r *http.Request) {})
 
 	router.HandleFunc("/csrfToken", csrfHandler).Methods("HEAD")
@@ -147,7 +149,7 @@ func main() {
 	// ATTENTION: This is a catch-all route; every route declared after this one will not match any request!
 	var cwd, _ = os.Getwd()
 	var staticAssetsPath = cwd + webStaticContentPath
-	var spaHandler = routes.NewSpaHandler(staticAssetsPath, "index.html")
+	var spaHandler = routes.NewSpaHandler(staticAssetsPath, "main.html")
 	log.Printf("Loading assets from: %s", staticAssetsPath)
 	router.PathPrefix("/").Handler(spaHandler)
 
@@ -253,6 +255,35 @@ func spotifyAuthMiddleware(next http.Handler) http.Handler {
 		} else {
 			next.ServeHTTP(w, r)
 		}
+	})
+}
+
+// As long as the user cannot provide a valid consent cookie she/he will only be served the
+// webStaticContentPath directory, i.e. the SPA. As no other route will be served no cookie etc. will
+// be set. All the user can do is requesting the main SPA - but it won't work and no data will be
+// processed, stored or handled in any other way.
+func consentMiddleware(next http.Handler) http.Handler {
+	var cwd, _ = os.Getwd()
+	var consentSPAHandler = routes.NewSpaHandler(cwd+webStaticContentPath, "consent.html")
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var cookie, err = r.Cookie(consentCookieName)
+		if err == http.ErrNoCookie {
+			if isDevMode {
+				log.Println("User did not yet give her/his consent. Serving the consent page.")
+			}
+
+			consentSPAHandler.ServeHTTP(w, r)
+
+			return
+		}
+
+		if isDevMode {
+			cookieValue, _ := url.QueryUnescape(cookie.Value)
+			log.Printf("User already gave her/his consent at '%s'.", cookieValue)
+		}
+
+		next.ServeHTTP(w, r)
 	})
 }
 

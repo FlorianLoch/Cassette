@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -49,6 +50,8 @@ func (h *spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	stat, err := os.Lstat(path)
 	if os.IsNotExist(err) || (err == nil && !stat.Mode().IsRegular()) {
 		// file does not exist, serve index page
+		log.Println("Trying to serve default page: ", h.indexPath)
+
 		http.ServeFile(w, r, h.indexPath)
 		return
 	} else if err != nil {
@@ -57,6 +60,8 @@ func (h *spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	log.Println("Trying to serve: ", path)
 
 	// otherwise, use http.FileServer to serve the static dir
 	h.fileServer.ServeHTTP(w, r)

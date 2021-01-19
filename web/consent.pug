@@ -1,0 +1,27 @@
+doctype html
+html(lang="en")
+  head
+    include includes/head.pug
+
+    title Cassettte - Consent Page
+  body
+    .header
+      h3
+        | Cassette
+        small.text-muted.ml-2 for Spotify
+    .container.mt-4
+      .jumbotron
+        h1.display-4 Welcome!
+        p.lead Cassette for Spotify is a tool aiming at giving you the same comfort listening to audiobooks on Spotify&#174; your good, old cassette recorder provided while benefiting from Spotify's large collection and sublime portability. It does that by enabling you to pause the story you are listening to and to resume later without having to take screenshots or noting down the position every time.
+        hr.my-4
+        p But before we can start please read the following and give your consent. We take your privacy very serious and refrain from collecting/storing any data from you that is not stricly necessary in order to provide this service. We even took additional measures to anonymize you within our database. There is really nothing suprising, promised! In the following this is explained in detail. In case of questions feel free to ask or to consult the source code of this application TODO: insert link. You can withdraw your consent at any time and may delete all data linked to you whenever you wish. You can also export it to have a look at the stored data linked to you. To do all of this please have a look at the bottom of the main web app once you gave your consent.
+        button.btn.btn-primary#consent-btn Accept
+    .footer
+      | Check out at
+      |
+      a(href="https://github.com/FlorianLoch/Spotistate") Github
+      |.
+      br
+      | Running UI version #{version}, built at #{buildDate}.
+
+    script(src='./consent.js')
