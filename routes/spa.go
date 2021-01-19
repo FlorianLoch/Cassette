@@ -45,11 +45,11 @@ func (h *spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// prepend the path with the path to the static directory
 	path = filepath.Join(h.staticPath, path)
 
-	// check whether a file exists at the given path
-	_, err = os.Stat(path)
-	if os.IsNotExist(err) {
-		// file does not exist, serve index.html
-		http.ServeFile(w, r, filepath.Join(h.staticPath, h.indexPath))
+	// check whether a file (and only a file, not a directory or a link to a file) exists at the given path
+	stat, err := os.Lstat(path)
+	if os.IsNotExist(err) || (err == nil && !stat.Mode().IsRegular()) {
+		// file does not exist, serve index page
+		http.ServeFile(w, r, h.indexPath)
 		return
 	} else if err != nil {
 		// if we got an error (that wasn't that the file doesn't exist) stating the
