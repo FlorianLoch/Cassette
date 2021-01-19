@@ -93,6 +93,7 @@ func main() {
 	var CSRF = csrf.Protect(
 		secret32Bytes,
 		csrf.RequestHeader(csrfTokenName),
+		csrf.CookieName(csrfTokenName),
 		csrf.Secure(!isDevMode),
 	)
 

@@ -20,7 +20,7 @@ module.exports = function (grunt) {
                   pretty: true,
                   data: {
                       version: require("./package.json").version,
-                      buildDate: new Date().toISOString()
+                      buildDate: new Date().toUTCString()
                   }
               },
               files: {
