@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/url"
@@ -83,6 +84,27 @@ func (p *PlayerStatesDAO) SavePlayerStates(playerStates *PlayerStates) {
 	}
 }
 
+func (p *PlayerStatesDAO) FetchJSONDump(userID string) ([]byte, error) {
+	hashedUserID := hashUserID(userID)
+
+	var item persistenceItem
+	err := p.collection.FindOne(context.TODO(), bson.D{{Key: "_id", Value: hashedUserID}}).Decode(&item)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return []byte(`{"message": "No data stored in system."}`), nil
+		}
+
+		return nil, fmt.Errorf("Could not load previous player states from db: %w", err)
+	}
+
+	json, err := json.Marshal(item)
+	if err != nil {
+		return nil, fmt.Errorf("Could not convert record to JSON: %w", err)
+	}
+
+	return json, nil
+}
+
 func hashUserID(userID string) string {
 	hash := sha256.Sum256([]byte(userID))
 	return fmt.Sprintf("%X", hash)
@@ -101,9 +123,9 @@ type PlayerState struct {
 }
 
 type persistenceItem struct {
-	Version      string
-	UserID       string         `bson:"_id"`
-	PlayerStates []*PlayerState `bson:"playerStates"`
+	Version      string         `bson:"version" json:"version"`
+	UserID       string         `bson:"_id" json:"_id"`
+	PlayerStates []*PlayerState `bson:"playerStates" json:"playerStates"`
 }
 
 type PlayerStates struct {

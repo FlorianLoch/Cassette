@@ -140,6 +140,9 @@ func main() {
 
 	router.HandleFunc("/playerStates/{slot}/restore", restoreHandler).Methods("POST")
 
+	router.HandleFunc("/you", userExportHandler).Methods("GET")
+	router.HandleFunc("/you", userDeleteHandler).Methods("DELETE")
+
 	// in order to keep existing session working we keep the old assets route but forward clients
 	router.HandleFunc("/webui/", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/", http.StatusPermanentRedirect)
@@ -341,7 +344,7 @@ func activeDevicesHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func storeHandler(w http.ResponseWriter, r *http.Request, slot int) {
-	err := storeCurrentPlayerState(getSpotifyClientFromRequest(r), &getCurrentUser(r).ID, slot)
+	err := storeCurrentPlayerState(getSpotifyClientFromRequest(r), getCurrentUser(r).ID, slot)
 
 	if err != nil {
 		log.Println("Could not process request:", err)
@@ -398,7 +401,7 @@ func restoreHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = restorePlayerState(getSpotifyClientFromRequest(r), &getCurrentUser(r).ID, slot, deviceID)
+	err = restorePlayerState(getSpotifyClientFromRequest(r), getCurrentUser(r).ID, slot, deviceID)
 
 	if err != nil {
 		http.Error(w, "Could not process request: "+err.Error(), http.StatusInternalServerError)
@@ -436,4 +439,19 @@ func getEnv(envName, defaultValue string) string {
 	}
 
 	return strings.TrimSpace(val)
+}
+
+func userExportHandler(w http.ResponseWriter, r *http.Request) {
+	json, err := playerStatesDAO.FetchJSONDump(getCurrentUser(r).ID)
+	if err != nil {
+		http.Error(w, err.Error(), 500) // TODO: Rework overall error handling
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(json)
+}
+
+func userDeleteHandler(w http.ResponseWriter, r *http.Request) {
+	// TODO: Implement
 }

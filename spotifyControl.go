@@ -16,7 +16,7 @@ func isContextResumable(playbackContext spotify.PlaybackContext) bool {
 	return t == "album" || t == "playlist"
 }
 
-func storeCurrentPlayerState(client *spotify.Client, userID *string, slot int) error {
+func storeCurrentPlayerState(client *spotify.Client, userID string, slot int) error {
 	var currentlyPlaying, err = client.PlayerCurrentlyPlaying()
 	if err != nil {
 		log.Println("Could not read whats currently playing!", err)
@@ -36,7 +36,7 @@ func storeCurrentPlayerState(client *spotify.Client, userID *string, slot int) e
 		log.Println("Could not read the current player state, we assume shuffle is deactivated therefore.")
 	}
 
-	var playerStates = playerStatesDAO.LoadPlayerStates(*userID)
+	var playerStates = playerStatesDAO.LoadPlayerStates(userID)
 	var currentState = playerStateFromCurrentlyPlaying(currentlyPlaying, shuffleActivated)
 
 	// replace, if < 0 then append a new slot
@@ -59,8 +59,8 @@ func storeCurrentPlayerState(client *spotify.Client, userID *string, slot int) e
 	return nil
 }
 
-func restorePlayerState(client *spotify.Client, userID *string, slot int, deviceID string) error {
-	var playerStates = playerStatesDAO.LoadPlayerStates(*userID)
+func restorePlayerState(client *spotify.Client, userID string, slot int, deviceID string) error {
+	var playerStates = playerStatesDAO.LoadPlayerStates(userID)
 
 	if slot >= len(playerStates.States) || slot < 0 {
 		return errors.New("'slot' is not in the range of exisiting slots")
