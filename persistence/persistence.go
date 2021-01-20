@@ -3,6 +3,7 @@ package persistence
 import (
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/url"
@@ -18,6 +19,10 @@ import (
 
 const (
 	collectionName = "player-states-per-user"
+)
+
+var (
+	ErrUserNotFound = errors.New("user not found in db")
 )
 
 type PlayerStatesDAO struct {
@@ -91,7 +96,7 @@ func (p *PlayerStatesDAO) FetchJSONDump(userID string) ([]byte, error) {
 	err := p.collection.FindOne(context.TODO(), bson.D{{Key: "_id", Value: hashedUserID}}).Decode(&item)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
-			return []byte(`{"message": "No data stored in system."}`), nil
+			return nil, ErrUserNotFound
 		}
 
 		return nil, fmt.Errorf("Could not load previous player states from db: %w", err)
@@ -103,6 +108,21 @@ func (p *PlayerStatesDAO) FetchJSONDump(userID string) ([]byte, error) {
 	}
 
 	return json, nil
+}
+
+func (p *PlayerStatesDAO) DeleteUserRecord(userID string) error {
+	hashedUserID := hashUserID(userID)
+
+	res, err := p.collection.DeleteOne(context.TODO(), bson.D{{Key: "_id", Value: hashedUserID}})
+	if err != nil {
+		return fmt.Errorf("Could not delete user record: %w", err)
+	}
+
+	if res.DeletedCount == 0 {
+		return ErrUserNotFound
+	}
+
+	return nil
 }
 
 func hashUserID(userID string) string {

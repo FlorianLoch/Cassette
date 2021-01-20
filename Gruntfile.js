@@ -58,14 +58,14 @@ module.exports = function (grunt) {
       concat: {
           js: {
               files: {
-                  "./web_dist/main.js": [
+                  "./web_dist/lib.js": [
                       "./node_modules/jquery/dist/jquery.slim.min.js",
                       "./node_modules/bootstrap/dist/js/bootstrap.bundle.min.js",
                       "./node_modules/nprogress/nprogress.js",
                       "./node_modules/vue/dist/vue.min.js",
-                      "./node_modules/vue-resource/dist/vue-resource.min.js",
-                      "./web_dist/_build/main.babeled.js"
+                      "./node_modules/vue-resource/dist/vue-resource.min.js"
                   ],
+                  "./web_dist/main.js": "./web_dist/_build/main.babeled.js",
                   "./web_dist/consent.js": "./web_dist/_build/consent.babeled.js"
               }
           },

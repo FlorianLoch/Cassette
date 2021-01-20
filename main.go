@@ -53,20 +53,20 @@ var (
 type m map[string]interface{}
 
 func main() {
-	isDevMode = getEnv(envENV, "") == "DEV"
+	isDevMode = env(envENV, "") == "DEV"
 	log.Printf("Running in DEV mode: %t. Being less verbose. Set environment variable 'ENV' to 'DEV' to activate.", isDevMode)
 
-	var networkInterface = getEnv(envNetworkInterface, defaultNetworkInterface)
+	var networkInterface = env(envNetworkInterface, defaultNetworkInterface)
 	// we also have to check for "PORT" as that is how Heroku tells the app where to listen
-	var port = getEnv(envPort, getEnv("PORT", defaultPort))
-	var appURL = getEnv(envAppURL, "http://"+networkInterface+":"+port+"/")
+	var port = env(envPort, env("PORT", defaultPort))
+	var appURL = env(envAppURL, "http://"+networkInterface+":"+port+"/")
 
-	var secret32Bytes, err = util.Make32ByteSecret(getEnv(envSecret, ""))
+	var secret32Bytes, err = util.Make32ByteSecret(env(envSecret, ""))
 	if err != nil {
 		log.Fatal("Could not generate secret. Aborting.", err)
 	}
 
-	var mongoDBURI = getEnv(envMongoURI, "")
+	var mongoDBURI = env(envMongoURI, "")
 	if mongoDBURI == "" {
 		log.Fatal("No URI for connecting to MongoDB given. Aborting.")
 	}
@@ -81,8 +81,8 @@ func main() {
 	gob.Register(&oauth2.Token{})
 	gob.Register(&m{})
 
-	var clientID = getEnv(envSpotifyClientID, "")
-	var clientSecret = getEnv(envSpotifyClientSecret, "")
+	var clientID = env(envSpotifyClientID, "")
+	var clientSecret = env(envSpotifyClientSecret, "")
 
 	if clientID == "" || clientSecret == "" {
 		log.Fatalf("Please make sure '%s' and '%s' are set. Aborting.", envSpotifyClientID, envSpotifyClientSecret)
@@ -208,7 +208,7 @@ func spotifyAuthMiddleware(next http.Handler) http.Handler {
 					}
 				}
 
-				var client = getSpotifyClientFromToken(tok)
+				var client = spotifyClientFromToken(tok)
 
 				currentUser, err := client.CurrentUser()
 				if err != nil {
@@ -291,15 +291,15 @@ func consentMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func getSpotifyClientFromRequest(r *http.Request) *spotify.Client {
+func spotifyClientFromRequest(r *http.Request) *spotify.Client {
 	session, _ := store.Get(r, sessionCookieName)
 
 	rawToken := session.Values["spotify-oauth-token"]
 
-	return getSpotifyClientFromToken(rawToken)
+	return spotifyClientFromToken(rawToken)
 }
 
-func getCurrentUser(r *http.Request) *spotify.PrivateUser {
+func currentUser(r *http.Request) *spotify.PrivateUser {
 	session, _ := store.Get(r, sessionCookieName)
 
 	rawUser := session.Values["user"]
@@ -313,7 +313,7 @@ func getCurrentUser(r *http.Request) *spotify.PrivateUser {
 	return user
 }
 
-func getSpotifyClientFromToken(rawToken interface{}) *spotify.Client {
+func spotifyClientFromToken(rawToken interface{}) *spotify.Client {
 	var tok = &oauth2.Token{}
 	var ok = true
 	if tok, ok = rawToken.(*oauth2.Token); !ok {
@@ -332,7 +332,7 @@ func csrfHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func activeDevicesHandler(w http.ResponseWriter, r *http.Request) {
-	json, err := getActiveSpotifyDevices(getSpotifyClientFromRequest(r))
+	json, err := getActiveSpotifyDevices(spotifyClientFromRequest(r))
 
 	if err != nil {
 		log.Println("Could not fetch list of active devices:", err)
@@ -344,7 +344,7 @@ func activeDevicesHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func storeHandler(w http.ResponseWriter, r *http.Request, slot int) {
-	err := storeCurrentPlayerState(getSpotifyClientFromRequest(r), getCurrentUser(r).ID, slot)
+	err := storeCurrentPlayerState(spotifyClientFromRequest(r), currentUser(r).ID, slot)
 
 	if err != nil {
 		log.Println("Could not process request:", err)
@@ -356,7 +356,7 @@ func storeHandler(w http.ResponseWriter, r *http.Request, slot int) {
 }
 
 func storeGetHandler(w http.ResponseWriter, r *http.Request) {
-	var playerStates = playerStatesDAO.LoadPlayerStates(getCurrentUser(r).ID)
+	var playerStates = playerStatesDAO.LoadPlayerStates(currentUser(r).ID)
 
 	var json, err = json.Marshal(playerStates)
 
@@ -379,7 +379,7 @@ func storeDeleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var playerStates = playerStatesDAO.LoadPlayerStates(getCurrentUser(r).ID)
+	var playerStates = playerStatesDAO.LoadPlayerStates(currentUser(r).ID)
 
 	if slot >= len(playerStates.States) || slot < 0 {
 		http.Error(w, "Could not process request: 'slot' is not in the range of exisiting slots", http.StatusInternalServerError)
@@ -401,7 +401,7 @@ func restoreHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = restorePlayerState(getSpotifyClientFromRequest(r), getCurrentUser(r).ID, slot, deviceID)
+	err = restorePlayerState(spotifyClientFromRequest(r), currentUser(r).ID, slot, deviceID)
 
 	if err != nil {
 		http.Error(w, "Could not process request: "+err.Error(), http.StatusInternalServerError)
@@ -430,7 +430,7 @@ func checkSlotParameter(r *http.Request) (int, error) {
 	return slot, nil
 }
 
-func getEnv(envName, defaultValue string) string {
+func env(envName, defaultValue string) string {
 	var val, exists = os.LookupEnv(envName)
 
 	if !exists {
@@ -442,9 +442,14 @@ func getEnv(envName, defaultValue string) string {
 }
 
 func userExportHandler(w http.ResponseWriter, r *http.Request) {
-	json, err := playerStatesDAO.FetchJSONDump(getCurrentUser(r).ID)
+	json, err := playerStatesDAO.FetchJSONDump(currentUser(r).ID)
 	if err != nil {
-		http.Error(w, err.Error(), 500) // TODO: Rework overall error handling
+		if errors.Is(err, persistence.ErrUserNotFound) {
+			http.NotFound(w, r)
+		} else {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
 		return
 	}
 
@@ -453,5 +458,12 @@ func userExportHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func userDeleteHandler(w http.ResponseWriter, r *http.Request) {
-	// TODO: Implement
+	err := playerStatesDAO.DeleteUserRecord(currentUser(r).ID)
+	if err != nil {
+		if errors.Is(err, persistence.ErrUserNotFound) {
+			http.NotFound(w, r)
+		} else {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	}
 }

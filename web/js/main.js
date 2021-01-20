@@ -4,7 +4,7 @@
   Vue.http.interceptors.push(() => {
     NProgress.start();
     return () => {
-        NProgress.done();
+      NProgress.done();
     };
   });
 
@@ -12,14 +12,14 @@
     template: '#modal-template'
   });
 
-  const URL_CSRF_TOKEN = "/csrfToken";
-  const URL_PLAYER_STATES = "/playerStates";
+  const URL_CSRF_TOKEN = "/csrfToken"
+  const CSRF_HEADER_NAME = "cassette_csrf_token"
+  const URL_PLAYER_STATES = "/playerStates"
   const URL_ACTIVE_DEVICES = "/activeDevices"
-  const CSRF_HEADER_NAME = "cassette_csrf_token";
 
   // TODO Add error handlers
 
-  const app = new Vue({
+  new Vue({
     el: '#app',
     data: {
       playerStates: [],
@@ -46,7 +46,7 @@
       fetchCSRFToken: function (done) {
         const self = this;
         this.$http.head(URL_CSRF_TOKEN).then(res => {
-          csrfToken = res.headers.get(CSRF_HEADER_NAME);
+          const csrfToken = res.headers.get(CSRF_HEADER_NAME);
 
           Vue.http.headers.common[CSRF_HEADER_NAME] = csrfToken;
 
