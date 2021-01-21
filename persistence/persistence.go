@@ -41,7 +41,7 @@ func NewPlayerStatesDAOFromConnectionString(connectionString string) *PlayerStat
 	}
 
 	if err != nil {
-		log.Fatal("Could not reach mongo db!\nTried to connect at: ", connectionString, "\nBut got error: ", err)
+		log.Fatal("Could not reach mongo db!\nTried to connect to: ", connectionString, "\nBut got error: ", err)
 	}
 
 	u, err := url.Parse(connectionString)

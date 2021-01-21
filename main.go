@@ -47,7 +47,7 @@ var (
 	store                *sessions.CookieStore
 	playerStatesDAO      *persistence.PlayerStatesDAO
 	isDevMode            bool
-	webStaticContentPath = "/web_dist"
+	webStaticContentPath = "/web/dist"
 )
 
 type m map[string]interface{}
@@ -58,7 +58,7 @@ func main() {
 
 	var networkInterface = env(envNetworkInterface, defaultNetworkInterface)
 	// we also have to check for "PORT" as that is how Heroku tells the app where to listen
-	var port = env(envPort, env("PORT", defaultPort))
+	var port = env(envPort, os.Getenv("PORT"))
 	var appURL = env(envAppURL, "http://"+networkInterface+":"+port+"/")
 
 	var secret32Bytes, err = util.Make32ByteSecret(env(envSecret, ""))
@@ -97,10 +97,18 @@ func main() {
 		csrf.Secure(!isDevMode),
 	)
 
-	router := mux.NewRouter()
+	var cwd, _ = os.Getwd()
+	var staticAssetsPath = cwd + webStaticContentPath
+	var spaHandler = routes.NewSpaHandler(staticAssetsPath, "index.html")
+
+	rootRouter := mux.NewRouter()
+	apiRouter := rootRouter.PathPrefix("/api").Subrouter()
+
+	rootRouter.Use(createConsentMiddleware(spaHandler))
+	rootRouter.Use(spotifyAuthMiddleware)
 
 	if isDevMode {
-		router.Use(func(nxt http.Handler) http.Handler {
+		apiRouter.Use(func(nxt http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				log.Printf("%s \"%s\" (%v)", r.Method, r.URL.Path, r.Header)
 				nxt.ServeHTTP(w, r)
@@ -108,24 +116,21 @@ func main() {
 		})
 	}
 
-	router.Use(consentMiddleware)
-	router.Use(spotifyAuthMiddleware)
-
 	// this route simply needs to be registered so that the middleware registered at the router gets invoked
 	// on requests for it
-	router.HandleFunc("/spotify-oauth-callback", func(w http.ResponseWriter, r *http.Request) {})
+	apiRouter.HandleFunc("/spotify-oauth-callback", func(w http.ResponseWriter, r *http.Request) {})
 
-	router.HandleFunc("/csrfToken", csrfHandler).Methods("HEAD")
+	apiRouter.HandleFunc("/csrfToken", csrfHandler).Methods("HEAD")
 
-	router.HandleFunc("/activeDevices", activeDevicesHandler).Methods("GET")
+	apiRouter.HandleFunc("/activeDevices", activeDevicesHandler).Methods("GET")
 
-	router.HandleFunc("/playerStates", func(w http.ResponseWriter, r *http.Request) {
-		storeHandler(w, r, -1)
+	apiRouter.HandleFunc("/playerStates", func(w http.ResponseWriter, r *http.Request) {
+		storePostHandler(w, r, -1)
 	}).Methods("POST")
 
-	router.HandleFunc("/playerStates", storeGetHandler).Methods("GET")
+	apiRouter.HandleFunc("/playerStates", storeGetHandler).Methods("GET")
 
-	router.HandleFunc("/playerStates/{slot}", func(w http.ResponseWriter, r *http.Request) {
+	apiRouter.HandleFunc("/playerStates/{slot}", func(w http.ResponseWriter, r *http.Request) {
 		slot, err := checkSlotParameter(r)
 
 		if err != nil {
@@ -133,31 +138,23 @@ func main() {
 			return
 		}
 
-		storeHandler(w, r, slot)
+		storePostHandler(w, r, slot)
 	}).Methods("PUT")
 
-	router.HandleFunc("/playerStates/{slot}", storeDeleteHandler).Methods("DELETE")
+	apiRouter.HandleFunc("/playerStates/{slot}", storeDeleteHandler).Methods("DELETE")
 
-	router.HandleFunc("/playerStates/{slot}/restore", restoreHandler).Methods("POST")
+	apiRouter.HandleFunc("/playerStates/{slot}/restore", restoreHandler).Methods("POST")
 
-	router.HandleFunc("/you", userExportHandler).Methods("GET")
-	router.HandleFunc("/you", userDeleteHandler).Methods("DELETE")
-
-	// in order to keep existing session working we keep the old assets route but forward clients
-	router.HandleFunc("/webui/", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/", http.StatusPermanentRedirect)
-	})
+	apiRouter.HandleFunc("/you", userExportHandler).Methods("GET")
+	apiRouter.HandleFunc("/you", userDeleteHandler).Methods("DELETE")
 
 	// provide the webapp following the SPA pattern: all non-API routes not being able
 	// to be resolved within the assets directory will return the webapp entry point.
 	// ATTENTION: This is a catch-all route; every route declared after this one will not match any request!
-	var cwd, _ = os.Getwd()
-	var staticAssetsPath = cwd + webStaticContentPath
-	var spaHandler = routes.NewSpaHandler(staticAssetsPath, "main.html")
 	log.Printf("Loading assets from: %s", staticAssetsPath)
-	router.PathPrefix("/").Handler(spaHandler)
+	rootRouter.PathPrefix("/").Handler(spaHandler)
 
-	http.Handle("/", router)
+	http.Handle("/", rootRouter)
 
 	var interfacePort = networkInterface + ":" + port
 	log.Println("Webserver started on", interfacePort)
@@ -266,29 +263,28 @@ func spotifyAuthMiddleware(next http.Handler) http.Handler {
 // webStaticContentPath directory, i.e. the SPA. As no other route will be served no cookie etc. will
 // be set. All the user can do is requesting the main SPA - but it won't work and no data will be
 // processed, stored or handled in any other way.
-func consentMiddleware(next http.Handler) http.Handler {
-	var cwd, _ = os.Getwd()
-	var consentSPAHandler = routes.NewSpaHandler(cwd+webStaticContentPath, "consent.html")
+func createConsentMiddleware(spaHandler http.Handler) mux.MiddlewareFunc {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var cookie, err = r.Cookie(consentCookieName)
+			if err == http.ErrNoCookie {
+				if isDevMode {
+					log.Println("User did not yet give her/his consent. Serving the consent page.")
+				}
 
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var cookie, err = r.Cookie(consentCookieName)
-		if err == http.ErrNoCookie {
-			if isDevMode {
-				log.Println("User did not yet give her/his consent. Serving the consent page.")
+				spaHandler.ServeHTTP(w, r)
+
+				return
 			}
 
-			consentSPAHandler.ServeHTTP(w, r)
+			if isDevMode {
+				cookieValue, _ := url.QueryUnescape(cookie.Value)
+				log.Printf("User already gave her/his consent at '%s'.", cookieValue)
+			}
 
-			return
-		}
-
-		if isDevMode {
-			cookieValue, _ := url.QueryUnescape(cookie.Value)
-			log.Printf("User already gave her/his consent at '%s'.", cookieValue)
-		}
-
-		next.ServeHTTP(w, r)
-	})
+			next.ServeHTTP(w, r)
+		})
+	}
 }
 
 func spotifyClientFromRequest(r *http.Request) *spotify.Client {
@@ -343,7 +339,7 @@ func activeDevicesHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(json)
 }
 
-func storeHandler(w http.ResponseWriter, r *http.Request, slot int) {
+func storePostHandler(w http.ResponseWriter, r *http.Request, slot int) {
 	err := storeCurrentPlayerState(spotifyClientFromRequest(r), currentUser(r).ID, slot)
 
 	if err != nil {
@@ -358,6 +354,7 @@ func storeHandler(w http.ResponseWriter, r *http.Request, slot int) {
 func storeGetHandler(w http.ResponseWriter, r *http.Request) {
 	var playerStates = playerStatesDAO.LoadPlayerStates(currentUser(r).ID)
 
+	// TODO: Only return the states, id is neither helpful nor necessary
 	var json, err = json.Marshal(playerStates)
 
 	if err != nil {
@@ -445,7 +442,7 @@ func userExportHandler(w http.ResponseWriter, r *http.Request) {
 	json, err := playerStatesDAO.FetchJSONDump(currentUser(r).ID)
 	if err != nil {
 		if errors.Is(err, persistence.ErrUserNotFound) {
-			http.NotFound(w, r)
+			http.Error(w, "No data stored in db for this user.", http.StatusBadRequest)
 		} else {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -461,7 +458,7 @@ func userDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	err := playerStatesDAO.DeleteUserRecord(currentUser(r).ID)
 	if err != nil {
 		if errors.Is(err, persistence.ErrUserNotFound) {
-			http.NotFound(w, r)
+			http.Error(w, "No data stored in db for this user.", http.StatusBadRequest)
 		} else {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
