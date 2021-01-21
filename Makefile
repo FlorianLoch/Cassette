@@ -19,7 +19,7 @@ docker-build:
 	mkdir -p .make/ && touch .make/docker-build
 
 docker-run:
-	docker run --env-file ./.env -p 8080:8080 fdloch/spotistate
+	docker run --env-file ./.env --env CASSETTE_PORT=8080 --env CASSETTE_NETWORK_INTERFACE=0.0.0.0 -p 8080:8080 fdloch/spotistate
 
 deploy_docker_heroku:
 	heroku container:login

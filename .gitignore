@@ -1,6 +1,5 @@
 .env
 vendor/
-node_modules/
-web_dist/
 spotistate
 **/.DS_Store
+.make/
