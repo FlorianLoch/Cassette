@@ -5,12 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net/url"
 	"strings"
 
 	"context"
 
+	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -29,55 +29,50 @@ type PlayerStatesDAO struct {
 	collection *mongo.Collection
 }
 
-func NewPlayerStatesDAO(collection *mongo.Collection) *PlayerStatesDAO {
-	return &PlayerStatesDAO{collection}
-}
-
-func NewPlayerStatesDAOFromConnectionString(connectionString string) *PlayerStatesDAO {
+func Connect(connectionString string) (*PlayerStatesDAO, error) {
 	client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(connectionString))
-
 	if err == nil {
 		err = client.Ping(context.Background(), readpref.Primary())
 	}
 
 	if err != nil {
-		log.Fatal("Could not reach mongo db!\nTried to connect to: ", connectionString, "\nBut got error: ", err)
+		return nil, fmt.Errorf("failed to connect to MongoDB at '%s': %w", connectionString, err)
 	}
 
 	u, err := url.Parse(connectionString)
 	if err != nil {
-		log.Fatal("Could not fetch db name from connection string: ", err)
+		return nil, fmt.Errorf("failed to parse given connection string '%s': %w", connectionString, err)
 	}
 
 	dbName := strings.Trim(u.Path, "/")
 	if dbName == "" {
-		log.Fatal("DB name retrieved from connection string is empty.")
+		return nil, fmt.Errorf("given database name is empty '%s'", connectionString)
 	}
 
-	log.Println(fmt.Sprintf("Connected to mongo db backend! Will use '%s' as db.", dbName))
+	log.Info().Msgf("Connected to mongo db backend! Will use '%s' as db.", dbName)
 
 	collection := client.Database(dbName).Collection(collectionName)
 
-	return NewPlayerStatesDAO(collection)
+	return &PlayerStatesDAO{collection}, nil
 }
 
-func (p *PlayerStatesDAO) LoadPlayerStates(userID string) *PlayerStates {
+func (p *PlayerStatesDAO) LoadPlayerStates(userID string) (*PlayerStates, error) {
 	hashedUserID := hashUserID(userID)
 
 	var item persistenceItem
 	err := p.collection.FindOne(context.TODO(), bson.D{{Key: "_id", Value: hashedUserID}}).Decode(&item)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
-			return &PlayerStates{UserID: userID, States: make([]*PlayerState, 0, 1)}
+			return &PlayerStates{UserID: userID, States: make([]*PlayerState, 0, 1)}, nil
 		}
 
-		log.Fatal("Could not load previous player states from db!\n\t", err)
+		return nil, err
 	}
 
-	return &PlayerStates{UserID: userID, States: item.PlayerStates}
+	return &PlayerStates{UserID: userID, States: item.PlayerStates}, nil
 }
 
-func (p *PlayerStatesDAO) SavePlayerStates(playerStates *PlayerStates) {
+func (p *PlayerStatesDAO) SavePlayerStates(playerStates *PlayerStates) error {
 	hashedUserID := hashUserID(playerStates.UserID)
 
 	opts := options.Update().SetUpsert(true)
@@ -85,8 +80,10 @@ func (p *PlayerStatesDAO) SavePlayerStates(playerStates *PlayerStates) {
 	_, err := p.collection.UpdateOne(context.TODO(), bson.D{{Key: "_id", Value: hashedUserID}}, bson.D{{Key: "$set", Value: bson.D{{Key: "playerStates", Value: &playerStates.States}, {Key: "version", Value: "2"}}}}, opts)
 
 	if err != nil {
-		log.Fatal("Could not write player states to db!\n\t", err)
+		return err
 	}
+
+	return nil
 }
 
 func (p *PlayerStatesDAO) FetchJSONDump(userID string) ([]byte, error) {
@@ -99,12 +96,12 @@ func (p *PlayerStatesDAO) FetchJSONDump(userID string) ([]byte, error) {
 			return nil, ErrUserNotFound
 		}
 
-		return nil, fmt.Errorf("Could not load previous player states from db: %w", err)
+		return nil, fmt.Errorf("could not load previous player states from db: %w", err)
 	}
 
 	json, err := json.Marshal(item)
 	if err != nil {
-		return nil, fmt.Errorf("Could not convert record to JSON: %w", err)
+		return nil, fmt.Errorf("could not convert record to JSON: %w", err)
 	}
 
 	return json, nil
@@ -115,7 +112,7 @@ func (p *PlayerStatesDAO) DeleteUserRecord(userID string) error {
 
 	res, err := p.collection.DeleteOne(context.TODO(), bson.D{{Key: "_id", Value: hashedUserID}})
 	if err != nil {
-		return fmt.Errorf("Could not delete user record: %w", err)
+		return fmt.Errorf("could not delete user record: %w", err)
 	}
 
 	if res.DeletedCount == 0 {

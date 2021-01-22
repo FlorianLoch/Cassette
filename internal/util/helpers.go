@@ -3,6 +3,9 @@ package util
 import (
 	"crypto/rand"
 	"crypto/sha256"
+	"log"
+	"os"
+	"strings"
 )
 
 func Make32ByteSecret(input string) ([]byte, error) {
@@ -19,4 +22,15 @@ func Make32ByteSecret(input string) ([]byte, error) {
 	}
 
 	return key, nil
+}
+
+func Env(envName, defaultValue string) string {
+	var val, exists = os.LookupEnv(envName)
+
+	if !exists {
+		log.Printf("WARNING: '%s' is not set. Using default value ('%s').", envName, defaultValue)
+		return defaultValue
+	}
+
+	return strings.TrimSpace(val)
 }
