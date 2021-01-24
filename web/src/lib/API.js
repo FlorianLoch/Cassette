@@ -55,6 +55,8 @@ const API = function () {
     return client.delete(URL_DATA)
   }
 
+  this.isConsentCookieValid = API.isConsentCookieValid
+
   this.URL_DATA = URL_DATA
 }
 
