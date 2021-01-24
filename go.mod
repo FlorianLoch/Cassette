@@ -4,7 +4,6 @@ go 1.15
 
 require (
 	github.com/aws/aws-sdk-go v1.35.7 // indirect
-	github.com/davecgh/go-spew v1.1.1
 	github.com/golang/snappy v0.0.2 // indirect
 	github.com/gorilla/context v1.1.1
 	github.com/gorilla/csrf v1.7.0
