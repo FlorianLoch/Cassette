@@ -6,6 +6,7 @@ const URL_DATA = API_PATH + "/you"
 const URL_CSRF_TOKEN = API_PATH + "/csrfToken"
 const URL_PLAYER_STATES = API_PATH + "/playerStates"
 const URL_ACTIVE_DEVICES = API_PATH + "/activeDevices"
+const CONSENT_COOKIE_NAME = "cassette_consent"
 
 
 const API = function () {
@@ -60,5 +61,9 @@ const API = function () {
 API.install = function (Vue) {
   Vue.prototype.$api = new API();
 };
+
+API.isConsentCookieValid = () => {
+  return document.cookie.split(";").find(it => it.startsWith(CONSENT_COOKIE_NAME + "="))
+}
 
 export default API

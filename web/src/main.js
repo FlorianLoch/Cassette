@@ -25,6 +25,10 @@ axios.interceptors.response.use((response) => {
   return response
 })
 
+if (!API.isConsentCookieValid()) {
+  router.replace({name: "Consent"})
+}
+
 new Vue({
   router,
   render: h => h(App)
