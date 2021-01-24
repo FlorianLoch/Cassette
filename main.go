@@ -34,13 +34,13 @@ var (
 type m map[string]interface{}
 
 func main() {
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	isDevMode = util.Env(constants.EnvENV, "") == "DEV"
-	log.Printf("Running in DEV mode: %t. Being less verbose. Set environment variable 'ENV' to 'DEV' to activate.", isDevMode)
-
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout})
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+
+	isDevMode = util.Env(constants.EnvENV, "") == "DEV"
 	if isDevMode {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+		log.Debug().Msg("Running in DEV mode. Being less verbose. Set environment variable 'ENV' to 'DEV' to activate.")
 	}
 
 	var networkInterface = util.Env(constants.EnvNetworkInterface, constants.DefaultNetworkInterface)
@@ -78,7 +78,7 @@ func main() {
 
 	auth.SetAuthInfo(clientID, clientSecret)
 
-	var CSRF = csrf.Protect(
+	var csrfMiddleware = csrf.Protect(
 		secret32Bytes,
 		csrf.RequestHeader(constants.CSRFTokenName),
 		csrf.CookieName(constants.CSRFTokenName),
@@ -92,8 +92,10 @@ func main() {
 	rootRouter := mux.NewRouter()
 	apiRouter := rootRouter.PathPrefix("/api").Subrouter()
 
-	rootRouter.Use(middleware.CreateConsentMiddleware(spaHandler, constants.ConsentCookieName))
+	rootRouter.Use(middleware.CreateConsentMiddleware(spaHandler))
 	rootRouter.Use(middleware.CreateSpotifyAuthMiddleware(store, auth, redirectURL))
+
+	apiRouter.Use(csrfMiddleware)
 
 	// if isDevMode {
 	// 	apiRouter.Use(func(nxt http.Handler) http.Handler {
@@ -154,7 +156,7 @@ func main() {
 	// provide the webapp following the SPA pattern: all non-API routes not being able
 	// to be resolved within the assets directory will return the webapp entry point.
 	// ATTENTION: This is a catch-all route; every route declared after this one will not match any request!
-	log.Printf("Loading assets from: %s", staticAssetsPath)
+	log.Info().Msgf("Loading assets from: '%s'", staticAssetsPath)
 	rootRouter.PathPrefix("/").Handler(spaHandler)
 
 	http.Handle("/", rootRouter)
@@ -162,6 +164,6 @@ func main() {
 	var interfacePort = networkInterface + ":" + port
 	log.Info().Msgf("Webserver started on %s", interfacePort)
 
-	err = http.ListenAndServe(interfacePort, CSRF(context.ClearHandler(http.DefaultServeMux)))
+	err = http.ListenAndServe(interfacePort, context.ClearHandler(http.DefaultServeMux))
 	log.Fatal().Err(err).Msg("Server terminated.")
 }
