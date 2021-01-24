@@ -1,18 +1,23 @@
-default: run_local
+default: spotistate
 
-.PHONY: web_dist-prepare web_dist clean deploy
+.PHONY: run clean deploy build-web
 
-run_local: install web_dist
-	spotistate
+clean:
+	rm -rf web/dist
+	rm spotistate
 
-web_dist-prepare:
-	npm install
+run: web/dist/ spotistate
+	./spotistate
 
-web_dist:
-	grunt
+build-web: web/dist/
 
-install:
-	go install
+# Check all files in web/ directory but IGNORE node_modules as this significantly slows down checking.
+# In case the content of web/node_modules changes a call to clean is therefore required.
+web/dist/: $(shell find ./web  -path ./web/node_modules -prune -false -o -type f -name '*.*')
+	yarn --cwd "./web" build
+
+spotistate: $(shell find ./ -type f -name '*.go')
+	go build .
 
 docker-build:
 	docker build . -t fdloch/spotistate
@@ -21,11 +26,11 @@ docker-build:
 docker-run:
 	docker run --env-file ./.env --env CASSETTE_PORT=8080 --env CASSETTE_NETWORK_INTERFACE=0.0.0.0 -p 8080:8080 fdloch/spotistate
 
-deploy_docker_heroku:
+deploy-docker-heroku:
 	heroku container:login
 	heroku container:push web
 	heroku container:release web
 
-heroku_init:
+heroku-init:
 	heroku login
 	heroku git:remote -a audio-book-helper-for-spotify
