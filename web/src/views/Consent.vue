@@ -21,7 +21,7 @@ export default {
   name: "Consent",
   methods: {
     giveConsent: function () {
-      const now = encodeURIComponent(new Date().toUTCString())
+      const now = Math.floor(Date.now() / 1000)
       const maxAge = 10 * 60 * 60 * 24 * 365 // 10 years
       document.cookie = `cassette_consent=${now};max-age=${maxAge}`
 
