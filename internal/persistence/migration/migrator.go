@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/florianloch/spotistate/internal/persistence"
+	"github.com/florianloch/cassette/internal/persistence"
 
 	"context"
 

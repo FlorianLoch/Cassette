@@ -28,7 +28,7 @@
       br
       | Check out at
       |
-      a(href="https://github.com/FlorianLoch/Spotistate") Github
+      a(href="https://github.com/florianloch/cassette") Github
       |.
       //- TODO: Include this again
       //- br

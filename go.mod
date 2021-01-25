@@ -1,4 +1,4 @@
-module github.com/florianloch/spotistate
+module github.com/florianloch/cassette
 
 go 1.15
 

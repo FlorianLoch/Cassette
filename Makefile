@@ -1,13 +1,13 @@
-default: spotistate
+default: cassette
 
 .PHONY: run clean deploy build-web
 
 clean:
 	rm -rf web/dist
-	rm spotistate
+	rm cassette
 
-run: web/dist/ spotistate
-	./spotistate
+run: web/dist/ cassette
+	./cassette
 
 build-web: web/dist/
 
@@ -16,15 +16,15 @@ build-web: web/dist/
 web/dist/: $(shell find ./web  -path ./web/node_modules -prune -false -o -type f -name '*.*')
 	yarn --cwd "./web" build
 
-spotistate: $(shell find ./ -type f -name '*.go')
+cassette: $(shell find ./ -type f -name '*.go')
 	go build .
 
 docker-build:
-	docker build . -t fdloch/spotistate
+	docker build . -t fdloch/cassette
 	mkdir -p .make/ && touch .make/docker-build
 
 docker-run:
-	docker run --env-file ./.env --env CASSETTE_PORT=8080 --env CASSETTE_NETWORK_INTERFACE=0.0.0.0 -p 8080:8080 fdloch/spotistate
+	docker run --env-file ./.env --env CASSETTE_PORT=8080 --env CASSETTE_NETWORK_INTERFACE=0.0.0.0 -p 8080:8080 fdloch/cassette
 
 deploy-docker-heroku:
 	heroku container:login

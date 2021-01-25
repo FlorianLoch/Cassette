@@ -8,9 +8,9 @@ import (
 	"github.com/gorilla/sessions"
 	spotifyAPI "github.com/zmb3/spotify"
 
-	constants "github.com/florianloch/spotistate/internal"
-	"github.com/florianloch/spotistate/internal/handler"
-	"github.com/florianloch/spotistate/internal/util"
+	constants "github.com/florianloch/cassette/internal"
+	"github.com/florianloch/cassette/internal/handler"
+	"github.com/florianloch/cassette/internal/util"
 )
 
 // TODO: Rewrite logging and error handling

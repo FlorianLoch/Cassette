@@ -6,11 +6,11 @@ import (
 	"net/url"
 	"os"
 
-	constants "github.com/florianloch/spotistate/internal"
-	"github.com/florianloch/spotistate/internal/handler"
-	"github.com/florianloch/spotistate/internal/middleware"
-	"github.com/florianloch/spotistate/internal/persistence"
-	"github.com/florianloch/spotistate/internal/util"
+	constants "github.com/florianloch/cassette/internal"
+	"github.com/florianloch/cassette/internal/handler"
+	"github.com/florianloch/cassette/internal/middleware"
+	"github.com/florianloch/cassette/internal/persistence"
+	"github.com/florianloch/cassette/internal/util"
 
 	"github.com/gorilla/context"
 	"github.com/gorilla/csrf"

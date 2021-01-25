@@ -1,5 +1,5 @@
 .env
 vendor/
-spotistate
+cassette
 **/.DS_Store
 .make/

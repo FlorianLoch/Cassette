@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"strconv"
 
-	constants "github.com/florianloch/spotistate/internal"
-	"github.com/florianloch/spotistate/internal/persistence"
-	"github.com/florianloch/spotistate/internal/spotify"
+	constants "github.com/florianloch/cassette/internal"
+	"github.com/florianloch/cassette/internal/persistence"
+	"github.com/florianloch/cassette/internal/spotify"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"github.com/rs/zerolog/log"

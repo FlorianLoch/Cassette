@@ -4,8 +4,8 @@ import (
 	"errors"
 	"log"
 
-	constants "github.com/florianloch/spotistate/internal"
-	"github.com/florianloch/spotistate/internal/persistence"
+	constants "github.com/florianloch/cassette/internal"
+	"github.com/florianloch/cassette/internal/persistence"
 
 	"github.com/zmb3/spotify"
 )
