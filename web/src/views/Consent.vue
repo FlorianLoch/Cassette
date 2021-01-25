@@ -34,7 +34,7 @@ export default {
       const maxAge = 10 * 60 * 60 * 24 * 365 // 10 years
       document.cookie = `cassette_consent=${now};max-age=${maxAge}`
 
-      window.location.href = "/"
+      this.$router.push({name: "Main"})
     },
     exportData: function () {
       window.location.href = this.$api.URL_DATA

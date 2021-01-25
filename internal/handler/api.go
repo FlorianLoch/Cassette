@@ -9,7 +9,6 @@ import (
 	constants "github.com/florianloch/spotistate/internal"
 	"github.com/florianloch/spotistate/internal/persistence"
 	"github.com/florianloch/spotistate/internal/spotify"
-	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"github.com/rs/zerolog/log"
@@ -205,12 +204,6 @@ func UserDeleteHandler(w http.ResponseWriter, r *http.Request, store *sessions.C
 			log.Debug().Err(err).Msg("Failed deleting user data.")
 		}
 	}
-}
-
-func CSRFHandler(w http.ResponseWriter, r *http.Request, csrfTokenName string) {
-	w.Header().Set(csrfTokenName, csrf.Token(r))
-
-	w.WriteHeader(http.StatusOK)
 }
 
 func CheckSlotParameter(r *http.Request) (int, error) {

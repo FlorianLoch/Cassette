@@ -40,7 +40,7 @@ func main() {
 	isDevMode = util.Env(constants.EnvENV, "") == "DEV"
 	if isDevMode {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-		log.Debug().Msg("Running in DEV mode. Being less verbose. Set environment variable 'ENV' to 'DEV' to activate.")
+		log.Debug().Msg("Running in DEV mode. Being more verbose. Set environment variable 'ENV' to 'DEV' to activate.")
 	}
 
 	var networkInterface = util.Env(constants.EnvNetworkInterface, constants.DefaultNetworkInterface)
@@ -112,7 +112,9 @@ func main() {
 	apiRouter.HandleFunc("/spotify-oauth-callback", func(w http.ResponseWriter, r *http.Request) {})
 
 	apiRouter.HandleFunc("/csrfToken", func(w http.ResponseWriter, r *http.Request) {
-		handler.CSRFHandler(w, r, constants.CSRFTokenName)
+		w.Header().Set(constants.CSRFTokenName, csrf.Token(r))
+
+		w.WriteHeader(http.StatusOK)
 	}).Methods("HEAD")
 
 	apiRouter.HandleFunc("/activeDevices", func(w http.ResponseWriter, r *http.Request) {

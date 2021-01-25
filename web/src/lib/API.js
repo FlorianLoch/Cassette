@@ -9,8 +9,8 @@ const URL_ACTIVE_DEVICES = API_PATH + "/activeDevices"
 const CONSENT_COOKIE_NAME = "cassette_consent"
 
 
-const API = function () {
-  const client = axios.create()
+const API = function (options) {
+  const client = (options) ? options.axios : null || axios.create()
 
   this.fetchCSRFToken = () => {
     return client.head(URL_CSRF_TOKEN).then((res) => {
@@ -60,12 +60,12 @@ const API = function () {
   this.URL_DATA = URL_DATA
 }
 
-API.install = function (Vue) {
-  Vue.prototype.$api = new API();
+API.install = function (Vue, options) {
+  Vue.prototype.$api = new API(options);
 };
 
 API.isConsentCookieValid = () => {
-  return document.cookie.split(";").find(it => it.startsWith(CONSENT_COOKIE_NAME + "="))
+  return document.cookie.split(";").some(it => it.trim().startsWith(CONSENT_COOKIE_NAME + "="))
 }
 
 export default API

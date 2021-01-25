@@ -4,17 +4,9 @@ import router from './router'
 import API from './lib/API'
 import axios from "axios"
 import NProgress from "nprogress"
-import { BootstrapVue } from 'bootstrap-vue'
+import { ModalPlugin, DropdownPlugin, BButton } from 'bootstrap-vue'
 
-import 'nprogress/nprogress.css'
-import 'bootstrap/dist/css/bootstrap.css'
-import 'bootstrap-vue/dist/bootstrap-vue.css'
 import './styles.scss'
-
-Vue.use(API)
-Vue.use(BootstrapVue)
-
-NProgress.configure({ showSpinner: false });
 
 axios.interceptors.request.use((config) => {
   NProgress.start()
@@ -23,7 +15,17 @@ axios.interceptors.request.use((config) => {
 axios.interceptors.response.use((response) => {
   NProgress.done()
   return response
+}, (err) => {
+  NProgress.done()
+  return Promise.reject(err)
 })
+
+Vue.use(API, {axios})
+Vue.use(ModalPlugin)
+Vue.use(DropdownPlugin)
+Vue.component('b-button', BButton)
+
+NProgress.configure({ showSpinner: false });
 
 if (!API.isConsentCookieValid()) {
   router.replace({name: "Consent"})

@@ -49,6 +49,7 @@ div
                     b-dropdown-item(
                       v-for="device in activeDevices",
                       @click="restoreFromPlayerState(slotNumber, device.id)"
+                      :key="device.name"
                     ) {{ device.name }}
                 template(v-else)
                   b-button(@click="restoreFromPlayerState(slotNumber)" variant="success")

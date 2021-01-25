@@ -22,4 +22,4 @@ I am aware that, at its current state this project does not necessarily meets be
 Version 1 is currently deployed at Heroku (as a Docker container) and can be found at [spotistate.fdlo.ch](https://spotistate.fdlo.ch). Note that the prototype does not reflect the current state of this repository and still uses the old name, which could not be kept as it violates Spotify's branding guidelines.
 
 ## Disclaimer
-The authors of this project are not related to Spotify in any way beside being happy users of their platform. This service is not related to Spotify beside using their API and content.
+The authors of this project are not related to Spotify in any way beside being happy users of their platform. This service is not related to Spotify except using their API and content.
