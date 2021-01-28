@@ -1,28 +1,28 @@
 default: cassette
 
-.PHONY: clean run build-web docker-build docker-run heroku-deploy-docker heroku-init
+.PHONY: clean run build-web docker-build docker-run heroku-deploy-docker heroku-init dokku-deploy
 
 clean:
 	rm -rf web/dist
 	rm cassette
 	rm -rf .make
 
-run: web/dist/ cassette
+run: ./web/dist/ ./cassette
 	./cassette
 
-build-web: web/dist/
+build-web: ./web/dist/
 
 # Check all files in web/ directory but IGNORE node_modules as this significantly slows down checking.
 # In case the content of web/node_modules changes a call to clean is therefore required.
-web/dist/: $(shell find ./web  -path ./web/node_modules -prune -false -o -type f -name '*')
+./web/dist/: $(shell find ./web -path ./web/node_modules -prune -false -o -type f -name '*')
 	yarn --cwd "./web" build
 
-cassette: $(shell find ./ -type f -name '*.go')
+./cassette: $(shell find ./ -type f -name '*.go')
 	go build .
 
 docker-build: .make/docker-build
 
-.make/docker-build: $(shell find . -not -path '*/\.*' -type f -name '*')
+.make/docker-build: $(shell find . -path ./web/node_modules -prune -false -o -not -path '*/\.*' -type f -name '*')
 	docker build . -t fdloch/cassette
 	mkdir -p .make/ && touch .make/docker-build
 
@@ -40,3 +40,11 @@ heroku-deploy-docker: .make/heroku-login
 	heroku login
 	heroku git:remote -a audio-book-helper-for-spotify
 	mkdir -p .make/ && touch .make/heroku-login
+
+dokku-deploy: .make/dokku-deploy
+
+.make/dokku-deploy: .make/docker-build
+	docker tag fdloch/cassette:latest dokku/cassette:latest
+	docker save dokku/cassette:latest | ssh florian@vps.fdlo.ch "docker load"
+	ssh -t florian@vps.fdlo.ch "sudo dokku tags:deploy cassette latest"
+	touch .make/dokku-deploy
