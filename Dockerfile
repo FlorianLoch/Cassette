@@ -18,6 +18,7 @@ RUN yarn build
 FROM alpine
 RUN apk --no-cache add ca-certificates
 WORKDIR /app
+COPY ./CHECKS .
 COPY --from=gobuilder /src/github.com/florianloch/cassette/cassette .
 COPY --from=web_distbuilder /build/dist ./web/dist
 CMD ["./cassette"]
