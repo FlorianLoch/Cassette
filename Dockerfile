@@ -3,13 +3,17 @@ WORKDIR /src/github.com/florianloch/cassette
 COPY . .
 RUN GOOS=linux GARCH=amd64 CGO_ENABLED=0 go build -o cassette .
 
+
 FROM node AS web_distbuilder
 WORKDIR /build
+# We run the next three lines before copying ./web in order to avoid running 'yarn install' every time some file in ./web changes
+COPY ./web/package.json .
+COPY ./web/yarn.lock .
+RUN yarn install
+
 COPY ./web .
-# Don't use dependencies that have been built on the host system...
-RUN rm -rf node_modules
-RUN npm install
-RUN npm run build
+RUN yarn build
+
 
 FROM alpine
 RUN apk --no-cache add ca-certificates
