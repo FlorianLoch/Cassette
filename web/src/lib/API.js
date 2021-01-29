@@ -30,7 +30,7 @@ const API = function (options) {
 
   this.fetchPlayerStates = () => {
     return client.get(URL_PLAYER_STATES).then((res) => {
-      return res.data.states
+      return res.data
     })
   }
 

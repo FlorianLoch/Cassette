@@ -3,8 +3,10 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	constants "github.com/florianloch/cassette/internal"
 	"github.com/florianloch/cassette/internal/persistence"
@@ -58,18 +60,18 @@ func StorePostHandler(w http.ResponseWriter, r *http.Request, store *sessions.Co
 
 	// replace, if < 0 then append a new slot
 	if slot >= 0 {
-		if slot >= len(playerStates.States) {
+		if slot >= len(playerStates) {
 			http.Error(w, "'slot' is not in the range of existing slots.", http.StatusBadRequest)
 			log.Debug().Int("slot", slot).Msg("Slot is out of range.")
 			return
 		}
 
-		playerStates.States[slot] = currentState
+		playerStates[slot] = currentState
 	} else {
-		playerStates.States = append(playerStates.States, currentState)
+		playerStates = append(playerStates, currentState)
 	}
 
-	err = dao.SavePlayerStates(playerStates)
+	err = dao.SavePlayerStates(userID, playerStates)
 	if err != nil {
 		log.Error().Err(err).Interface("playerStates", playerStates).Msg("Could not persist player states in DB.")
 		http.Error(w, "Could not persist player states in DB.", http.StatusInternalServerError)
@@ -93,8 +95,8 @@ func StoreGetHandler(w http.ResponseWriter, r *http.Request, store *sessions.Coo
 		return
 	}
 
-	// TODO: Only return the states, id is neither helpful nor necessary
-	json, err := json.Marshal(playerStates)
+	enriched := enrichPlayerStates(playerStates)
+	json, err := json.Marshal(enriched)
 	if err != nil {
 		log.Error().Err(err).Interface("playerStates", playerStates).Msg("Could not serialize player states to JSON.")
 		http.Error(w, "Failed to provide player states as JSON.", http.StatusInternalServerError)
@@ -106,6 +108,8 @@ func StoreGetHandler(w http.ResponseWriter, r *http.Request, store *sessions.Coo
 }
 
 func StoreDeleteHandler(w http.ResponseWriter, r *http.Request, store *sessions.CookieStore, dao *persistence.PlayerStatesDAO) {
+	var userID = currentUser(r, store).ID
+
 	var slot, err = CheckSlotParameter(r)
 	if err != nil {
 		log.Debug().Err(err).Msg("Could not process request.")
@@ -113,22 +117,22 @@ func StoreDeleteHandler(w http.ResponseWriter, r *http.Request, store *sessions.
 		return
 	}
 
-	playerStates, err := dao.LoadPlayerStates(currentUser(r, store).ID)
+	playerStates, err := dao.LoadPlayerStates(userID)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed loading player states from DB.")
 		http.Error(w, "Could not retrieve player states from DB.", http.StatusInternalServerError)
 		return
 	}
 
-	if slot >= len(playerStates.States) {
+	if slot >= len(playerStates) {
 		log.Debug().Int("slot", slot).Interface("playerStates", playerStates).Msg("Unable to delete player state - slot out of range.")
 		http.Error(w, "'slot' is not in the range of existing slots.", http.StatusInternalServerError)
 		return
 	}
 
-	playerStates.States = append(playerStates.States[:slot], playerStates.States[slot+1:]...)
+	playerStates = append(playerStates[:slot], playerStates[slot+1:]...)
 
-	err = dao.SavePlayerStates(playerStates)
+	err = dao.SavePlayerStates(userID, playerStates)
 	if err != nil {
 		log.Error().Err(err).Interface("playerStates", playerStates).Msg("Could not persist player states in DB.")
 		http.Error(w, "Could not persist player states in DB.", http.StatusInternalServerError)
@@ -154,7 +158,7 @@ func RestoreHandler(w http.ResponseWriter, r *http.Request, store *sessions.Cook
 		return
 	}
 
-	if slot >= len(playerStates.States) {
+	if slot >= len(playerStates) {
 		log.Debug().Int("slot", slot).Interface("playerStates", playerStates).Msg("Unable to delete player state - slot out of range.")
 		http.Error(w, "'slot' is not in the range of existing slots.", http.StatusInternalServerError)
 		return
@@ -166,7 +170,7 @@ func RestoreHandler(w http.ResponseWriter, r *http.Request, store *sessions.Cook
 		log.Debug().Err(err).Msg("Could not pause player.")
 	}
 
-	var stateToRestore = playerStates.States[slot]
+	var stateToRestore = playerStates[slot]
 
 	err = spotify.RestorePlayerState(spotifyClient, stateToRestore, deviceID)
 	if err != nil {
@@ -252,10 +256,40 @@ func SpotifyClientFromToken(rawToken interface{}, auth *spotifyAPI.Authenticator
 	var ok = true
 	if tok, ok = rawToken.(*oauth2.Token); !ok {
 		// Fatal should be fine in this case as this is not an error that should ever occur.
-		log.Fatal().Msg("Could not type-assert the stored token!")
+		log.Fatal().Interface("rawToken", rawToken).Msg("Could not type-assert the stored token!")
 	}
 
 	client := auth.NewClient(tok)
 
 	return &client
+}
+
+func enrichPlayerStates(playerStates []*persistence.PlayerState) []*enrichedPlayerState {
+	enrichedPlayerStates := make([]*enrichedPlayerState, len(playerStates))
+
+	for i, playerState := range playerStates {
+		enrichedPlayerStates[i] = &enrichedPlayerState{
+			PlayerState:   playerState,
+			LinkToContext: linkToContext(playerState.PlaybackContextURI),
+		}
+	}
+
+	return enrichedPlayerStates
+}
+
+func linkToContext(playbackContextURI string) string {
+	splits := strings.Split(playbackContextURI, ":")
+
+	if len(splits) != 3 {
+		log.Error().Str("playbackContextURI", playbackContextURI).Interface("splits", splits).Msg("Splitting context URI did not result in 3 parts.")
+
+		return ""
+	}
+
+	return fmt.Sprintf("https://open.spotify.com/%s/%s", splits[1], splits[2])
+}
+
+type enrichedPlayerState struct {
+	*persistence.PlayerState
+	LinkToContext string
 }

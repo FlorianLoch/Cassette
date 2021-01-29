@@ -1,6 +1,6 @@
 default: cassette
 
-.PHONY: clean run build-web docker-build docker-run heroku-deploy-docker heroku-init dokku-deploy
+.PHONY: clean run test build-web docker-build docker-run heroku-deploy-docker heroku-init dokku-deploy
 
 clean:
 	rm -rf web/dist
@@ -10,11 +10,14 @@ clean:
 run: ./web/dist/ ./cassette
 	./cassette
 
+test:
+	go test ./...
+
 build-web: ./web/dist/
 
 # Check all files in web/ directory but IGNORE node_modules as this significantly slows down checking.
 # In case the content of web/node_modules changes a call to clean is therefore required.
-./web/dist/: $(shell find ./web -path ./web/node_modules -prune -false -o -type f -name '*')
+./web/dist/: $(shell find ./web -path ./web/node_modules -prune -false -o -path ./web/dist -prune -false -o -type f -name '*')
 	yarn --cwd "./web" build
 
 ./cassette: $(shell find ./ -type f -name '*.go')

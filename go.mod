@@ -11,6 +11,7 @@ require (
 	github.com/gorilla/sessions v1.2.1
 	github.com/klauspost/compress v1.11.1 // indirect
 	github.com/rs/zerolog v1.20.0
+	github.com/stretchr/testify v1.6.1
 	github.com/xdg/stringprep v1.0.0 // indirect
 	github.com/zmb3/spotify v0.0.0-20200814173021-9bec46940cc0
 	go.mongodb.org/mongo-driver v1.4.2

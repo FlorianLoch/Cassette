@@ -56,28 +56,28 @@ func Connect(connectionString string) (*PlayerStatesDAO, error) {
 	return &PlayerStatesDAO{collection}, nil
 }
 
-func (p *PlayerStatesDAO) LoadPlayerStates(userID string) (*PlayerStates, error) {
+func (p *PlayerStatesDAO) LoadPlayerStates(userID string) ([]*PlayerState, error) {
 	hashedUserID := hashUserID(userID)
 
 	var item persistenceItem
 	err := p.collection.FindOne(context.TODO(), bson.D{{Key: "_id", Value: hashedUserID}}).Decode(&item)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
-			return &PlayerStates{UserID: userID, States: make([]*PlayerState, 0, 1)}, nil
+			return make([]*PlayerState, 0), nil
 		}
 
 		return nil, err
 	}
 
-	return &PlayerStates{UserID: userID, States: item.PlayerStates}, nil
+	return item.PlayerStates, nil
 }
 
-func (p *PlayerStatesDAO) SavePlayerStates(playerStates *PlayerStates) error {
-	hashedUserID := hashUserID(playerStates.UserID)
+func (p *PlayerStatesDAO) SavePlayerStates(userID string, playerStates []*PlayerState) error {
+	hashedUserID := hashUserID(userID)
 
 	opts := options.Update().SetUpsert(true)
 
-	_, err := p.collection.UpdateOne(context.TODO(), bson.D{{Key: "_id", Value: hashedUserID}}, bson.D{{Key: "$set", Value: bson.D{{Key: "playerStates", Value: &playerStates.States}, {Key: "version", Value: "2"}}}}, opts)
+	_, err := p.collection.UpdateOne(context.TODO(), bson.D{{Key: "_id", Value: hashedUserID}}, bson.D{{Key: "$set", Value: bson.D{{Key: "playerStates", Value: playerStates}, {Key: "version", Value: "2"}}}}, opts)
 
 	if err != nil {
 		return err
@@ -143,9 +143,4 @@ type persistenceItem struct {
 	Version      string         `bson:"version" json:"version"`
 	UserID       string         `bson:"_id" json:"_id"`
 	PlayerStates []*PlayerState `bson:"playerStates" json:"playerStates"`
-}
-
-type PlayerStates struct {
-	UserID string         `json:"-"`
-	States []*PlayerState `json:"states" bson:"states"`
 }
