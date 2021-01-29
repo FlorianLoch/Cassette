@@ -150,13 +150,12 @@ export default {
     }
   },
   mounted: function () {
-    this.fetchActiveDevices()
-
     this.$api.fetchCSRFToken().then((csrfToken) => {
       console.info("Successfully fetched CSRF token.")
 
       this.$api.setCSRFToken(csrfToken)
 
+      this.fetchActiveDevices()
       this.fetchPlayerStates()
     }, (err) => {
       this.showErrorMessage("Failed initializing the app. Please reload the page.")

@@ -7,7 +7,9 @@
     keep-alive
       router-view
     .footer
-      | Powered by
+      | Content provided by Spotify.
+      br
+      | App powered by
       |
       a(href="https://golang.org" target="_blank") Go
       | ,
@@ -17,7 +19,7 @@
       | and
       |
       a(href="https://getbootstrap.com" target="_blank") Bootstrap
-      |. Favicon (edited) and other icons originate from the
+      |. Icons originate from the
       |
       a(href="https://fontawesome.com" target="_blank") Font Awesome project
       |

@@ -83,6 +83,7 @@ func main() {
 		csrf.RequestHeader(constants.CSRFTokenName),
 		csrf.CookieName(constants.CSRFTokenName),
 		csrf.Secure(!isDevMode),
+		csrf.MaxAge(60*60*24*365), // Cookie is valid for 1 year
 	)
 
 	var cwd, _ = os.Getwd()
