@@ -34,7 +34,9 @@ export default {
       const maxAge = 10 * 60 * 60 * 24 * 365 // 10 years
       document.cookie = `cassette_consent=${now};max-age=${maxAge}`
 
-      this.$router.push({name: "Main"})
+      // We have to explicitly trigger the browser to reload the page in order
+      // for the Spotify OAuth redirect to kick in.
+      window.location.href = "/"
     },
     exportData: function () {
       window.location.href = this.$api.URL_DATA
