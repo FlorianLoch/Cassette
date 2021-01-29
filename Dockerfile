@@ -1,5 +1,9 @@
 FROM golang AS gobuilder
 WORKDIR /src/github.com/florianloch/cassette
+# We run the next three lines before copying the workspace in order to avoid having go download all modules everytime somethings changes
+COPY go.mod .
+COPY go.sum .
+RUN go mod download
 COPY . .
 RUN GOOS=linux GARCH=amd64 CGO_ENABLED=0 go build -o cassette .
 

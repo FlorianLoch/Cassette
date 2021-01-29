@@ -4,8 +4,8 @@ default: cassette
 
 clean:
 	rm -rf web/dist
-	rm cassette
 	rm -rf .make
+	rm cassette
 
 run: ./web/dist/ ./cassette
 	./cassette
@@ -30,7 +30,7 @@ docker-build: .make/docker-build
 	mkdir -p .make/ && touch .make/docker-build
 
 docker-run: .make/docker-build
-	docker run --env-file ./.env --env CASSETTE_PORT=8080 --env CASSETTE_NETWORK_INTERFACE=0.0.0.0 -p 8080:8080 fdloch/cassette
+	docker run --env-file ./.env --env CASSETTE_PORT=8080 --env CASSETTE_NETWORK_INTERFACE=0.0.0.0 --env CASSETTE_APP_URL=http://192.168.108.176:8080 -p 8080:8080 fdloch/cassette
 
 heroku-init: .make/heroku-login
 
