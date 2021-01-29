@@ -5,20 +5,30 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
 
 	constants "github.com/florianloch/cassette/internal"
 	"github.com/florianloch/cassette/internal/persistence"
 	"github.com/florianloch/cassette/internal/spotify"
-	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"github.com/rs/zerolog/log"
 	spotifyAPI "github.com/zmb3/spotify"
 	"golang.org/x/oauth2"
 )
 
-func ActiveDevicesHandler(w http.ResponseWriter, r *http.Request, store *sessions.CookieStore, auth *spotifyAPI.Authenticator) {
+// TODO: Move to constants file
+const (
+	fieldStore = "store"
+	fieldAuth  = "auth"
+	fieldDao   = "dao"
+	fieldSlot  = "slot"
+)
+
+func ActiveDevicesHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	store := ctx.Value(fieldStore).(*sessions.CookieStore)
+	auth := ctx.Value(fieldAuth).(*spotifyAPI.Authenticator)
+
 	playerDevices, err := spotify.ActiveSpotifyDevices(spotifyClientFromRequest(r, store, auth))
 
 	if err != nil {
@@ -41,7 +51,16 @@ func ActiveDevicesHandler(w http.ResponseWriter, r *http.Request, store *session
 	w.Write(json)
 }
 
-func StorePostHandler(w http.ResponseWriter, r *http.Request, store *sessions.CookieStore, auth *spotifyAPI.Authenticator, dao *persistence.PlayerStatesDAO, slot int) {
+func StorePostHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	store := ctx.Value(fieldStore).(*sessions.CookieStore)
+	auth := ctx.Value(fieldAuth).(*spotifyAPI.Authenticator)
+	dao := ctx.Value(fieldDao).(*persistence.PlayerStatesDAO)
+	slot, ok := ctx.Value(fieldSlot).(int)
+	if !ok {
+		slot = -1
+	}
+
 	var userID = currentUser(r, store).ID
 	var spotifyClient = spotifyClientFromRequest(r, store, auth)
 	var currentState, err = spotify.CurrentPlayerState(spotifyClient)
@@ -87,7 +106,11 @@ func StorePostHandler(w http.ResponseWriter, r *http.Request, store *sessions.Co
 	w.WriteHeader(http.StatusCreated)
 }
 
-func StoreGetHandler(w http.ResponseWriter, r *http.Request, store *sessions.CookieStore, dao *persistence.PlayerStatesDAO) {
+func StoreGetHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	store := ctx.Value(fieldStore).(*sessions.CookieStore)
+	dao := ctx.Value(fieldDao).(*persistence.PlayerStatesDAO)
+
 	var playerStates, err = dao.LoadPlayerStates(currentUser(r, store).ID)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed loading player states from DB.")
@@ -107,15 +130,14 @@ func StoreGetHandler(w http.ResponseWriter, r *http.Request, store *sessions.Coo
 	w.Write(json)
 }
 
-func StoreDeleteHandler(w http.ResponseWriter, r *http.Request, store *sessions.CookieStore, dao *persistence.PlayerStatesDAO) {
-	var userID = currentUser(r, store).ID
+func StoreDeleteHandler(w http.ResponseWriter, r *http.Request) {
+	// TODO: Add a note that it is ensure that all values are set when these handlers are called?
+	ctx := r.Context()
+	store := ctx.Value(fieldStore).(*sessions.CookieStore)
+	dao := ctx.Value(fieldDao).(*persistence.PlayerStatesDAO)
+	slot := ctx.Value(fieldSlot).(int)
 
-	var slot, err = CheckSlotParameter(r)
-	if err != nil {
-		log.Debug().Err(err).Msg("Could not process request.")
-		http.Error(w, "Could not process request. Please check whether the given slot is valid.", http.StatusBadRequest)
-		return
-	}
+	var userID = currentUser(r, store).ID
 
 	playerStates, err := dao.LoadPlayerStates(userID)
 	if err != nil {
@@ -139,15 +161,14 @@ func StoreDeleteHandler(w http.ResponseWriter, r *http.Request, store *sessions.
 	}
 }
 
-func RestoreHandler(w http.ResponseWriter, r *http.Request, store *sessions.CookieStore, auth *spotifyAPI.Authenticator, dao *persistence.PlayerStatesDAO) {
-	var spotifyClient = spotifyClientFromRequest(r, store, auth)
+func RestoreHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	store := ctx.Value(fieldStore).(*sessions.CookieStore)
+	auth := ctx.Value(fieldAuth).(*spotifyAPI.Authenticator)
+	dao := ctx.Value(fieldDao).(*persistence.PlayerStatesDAO)
+	slot := ctx.Value(fieldSlot).(int)
 
-	var slot, err = CheckSlotParameter(r)
-	if err != nil {
-		log.Debug().Err(err).Msg("Could not process request.")
-		http.Error(w, "Could not process request. Please check whether the given slot is valid.", http.StatusBadRequest)
-		return
-	}
+	var spotifyClient = spotifyClientFromRequest(r, store, auth)
 
 	var deviceID = r.URL.Query().Get("deviceID")
 	var userID = currentUser(r, store).ID
@@ -179,7 +200,11 @@ func RestoreHandler(w http.ResponseWriter, r *http.Request, store *sessions.Cook
 	}
 }
 
-func UserExportHandler(w http.ResponseWriter, r *http.Request, store *sessions.CookieStore, dao *persistence.PlayerStatesDAO) {
+func UserExportHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	store := ctx.Value(fieldStore).(*sessions.CookieStore)
+	dao := ctx.Value(fieldDao).(*persistence.PlayerStatesDAO)
+
 	json, err := dao.FetchJSONDump(currentUser(r, store).ID)
 	if err != nil {
 		if errors.Is(err, persistence.ErrUserNotFound) {
@@ -197,7 +222,11 @@ func UserExportHandler(w http.ResponseWriter, r *http.Request, store *sessions.C
 	w.Write(json)
 }
 
-func UserDeleteHandler(w http.ResponseWriter, r *http.Request, store *sessions.CookieStore, dao *persistence.PlayerStatesDAO) {
+func UserDeleteHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	store := ctx.Value(fieldStore).(*sessions.CookieStore)
+	dao := ctx.Value(fieldDao).(*persistence.PlayerStatesDAO)
+
 	err := dao.DeleteUserRecord(currentUser(r, store).ID)
 	if err != nil {
 		if errors.Is(err, persistence.ErrUserNotFound) {
@@ -210,24 +239,7 @@ func UserDeleteHandler(w http.ResponseWriter, r *http.Request, store *sessions.C
 	}
 }
 
-func CheckSlotParameter(r *http.Request) (int, error) {
-	var rawSlot, ok = mux.Vars(r)["slot"]
-
-	if !ok {
-		return -1, errors.New("query parameter 'slot' not found or more than one provided")
-	}
-
-	var slot, err = strconv.Atoi(rawSlot)
-	if err != nil {
-		return -1, errors.New("query parameter 'slot' is not a valid integer")
-	}
-	if slot < 0 {
-		return -1, errors.New("query parameter 'slot' has to be >= 0")
-	}
-
-	return slot, nil
-}
-
+// TODO: Also attach this in middleware instead of in handler
 func spotifyClientFromRequest(r *http.Request, store *sessions.CookieStore, auth *spotifyAPI.Authenticator) *spotifyAPI.Client {
 	session, _ := store.Get(r, constants.SessionCookieName)
 

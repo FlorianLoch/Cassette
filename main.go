@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
 	"encoding/gob"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 
 	constants "github.com/florianloch/cassette/internal"
 	"github.com/florianloch/cassette/internal/handler"
@@ -13,9 +16,9 @@ import (
 	"github.com/florianloch/cassette/internal/persistence"
 	"github.com/florianloch/cassette/internal/util"
 
-	"github.com/gorilla/context"
+	"github.com/go-chi/chi"
+	chiMiddleware "github.com/go-chi/chi/middleware"
 	"github.com/gorilla/csrf"
-	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -27,7 +30,7 @@ var (
 	redirectURL          *url.URL
 	auth                 *spotify.Authenticator
 	store                *sessions.CookieStore
-	playerStatesDAO      *persistence.PlayerStatesDAO
+	dao                  *persistence.PlayerStatesDAO
 	isDevMode            bool
 	webStaticContentPath = "/web/dist"
 )
@@ -45,7 +48,7 @@ func main() {
 	}
 
 	var networkInterface = util.Env(constants.EnvNetworkInterface, constants.DefaultNetworkInterface)
-	// we also have to check for "PORT" as that is how Heroku tells the app where to listen
+	// We also have to check for "PORT" as that is how Heroku/Dokku etc. tells the app where to listen
 	var port = util.Env(constants.EnvPort, os.Getenv("PORT"))
 	var appURL = util.Env(constants.EnvAppURL, "http://"+networkInterface+":"+port+"/")
 
@@ -58,7 +61,10 @@ func main() {
 	if mongoDBURI == "" {
 		log.Fatal().Msg("No URI for connecting to MongoDB given. Aborting.")
 	}
-	dao, err := persistence.Connect(mongoDBURI)
+	dao, err = persistence.Connect(mongoDBURI)
+	if err != nil {
+		log.Fatal().Err(err).Str("mongoDBURI", mongoDBURI).Msg("Failed connecting to MongoDB.")
+	}
 
 	store = sessions.NewCookieStore(secret32Bytes)
 
@@ -95,88 +101,123 @@ func main() {
 	var cwd, _ = os.Getwd()
 	var staticAssetsPath = cwd + webStaticContentPath
 	var spaHandler = handler.NewSpaHandler(staticAssetsPath, "index.html")
+	log.Info().Msgf("Loading assets from: '%s'", staticAssetsPath)
 
-	rootRouter := mux.NewRouter()
-	apiRouter := rootRouter.PathPrefix("/api").Subrouter()
+	r := chi.NewRouter()
 
-	rootRouter.Use(middleware.CreateConsentMiddleware(spaHandler))
-	rootRouter.Use(middleware.CreateSpotifyAuthMiddleware(store, auth, redirectURL))
+	r.Use(chiMiddleware.RequestID)
+	r.Use(chiMiddleware.Logger)
+	r.Use(chiMiddleware.Recoverer)
 
-	if isDevMode {
-		apiRouter.Use(func(nxt http.Handler) http.Handler {
-			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				token := r.Header.Get(constants.CSRFHeaderName)
+	r.Route("/api", func(r chi.Router) {
+		if isDevMode {
+			r.Use(debugLogger)
+		}
+		r.Use(middleware.CreateConsentMiddleware(spaHandler))
+		r.Use(middleware.CreateSpotifyAuthMiddleware(store, auth, redirectURL))
+		r.Use(csrfMiddleware)
+		r.Use(attachStore)
 
-				log.Debug().Str("csrfToken", token).Stringer("url", r.URL).Interface("cookies", r.Cookies()).Msg("")
+		// apiRouter.HandleFunc("/spotify-oauth-callback", func(w http.ResponseWriter, r *http.Request) {})
 
-				nxt.ServeHTTP(w, r)
+		r.Head("/csrfToken", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set(constants.CSRFHeaderName, csrf.Token(r))
+		})
+
+		r.With(attachAuth).Get("/activeDevices", handler.ActiveDevicesHandler)
+		r.With(attachAuth).With(attachDAO).Route("/playerStates", func(r chi.Router) {
+			r.Post("/", handler.StorePostHandler)
+			r.Get("/", handler.StoreGetHandler)
+			r.With(attachSlot).Route("/{slot}", func(r chi.Router) {
+				r.Put("/", handler.StorePostHandler)
+				r.Delete("/", handler.StoreDeleteHandler)
+				r.Post("/restore", handler.RestoreHandler)
 			})
 		})
-	}
 
-	apiRouter.Use(csrfMiddleware)
+		r.With(attachDAO).Route("/you", func(r chi.Router) {
+			r.Get("/", handler.UserExportHandler)
+			r.Delete("/", handler.UserDeleteHandler)
+		})
 
-	// this route simply needs to be registered so that the middleware registered at the router gets invoked
-	// on requests for it
-	apiRouter.HandleFunc("/spotify-oauth-callback", func(w http.ResponseWriter, r *http.Request) {})
+	})
 
-	apiRouter.HandleFunc("/csrfToken", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set(constants.CSRFHeaderName, csrf.Token(r))
-
-		w.WriteHeader(http.StatusOK)
-	}).Methods("HEAD")
-
-	apiRouter.HandleFunc("/activeDevices", func(w http.ResponseWriter, r *http.Request) {
-		handler.ActiveDevicesHandler(w, r, store, auth)
-	}).Methods("GET")
-
-	apiRouter.HandleFunc("/playerStates", func(w http.ResponseWriter, r *http.Request) {
-		handler.StorePostHandler(w, r, store, auth, dao, -1)
-	}).Methods("POST")
-
-	apiRouter.HandleFunc("/playerStates", func(w http.ResponseWriter, r *http.Request) {
-		handler.StoreGetHandler(w, r, store, dao)
-	}).Methods("GET")
-
-	apiRouter.HandleFunc("/playerStates/{slot}", func(w http.ResponseWriter, r *http.Request) {
-		slot, err := handler.CheckSlotParameter(r)
-		if err != nil {
-			log.Debug().Err(err).Msg("Could not process request.")
-			http.Error(w, "Could not process request. Please check whether the given slot is valid.", http.StatusBadRequest)
-			return
-		}
-
-		handler.StorePostHandler(w, r, store, auth, dao, slot)
-	}).Methods("PUT")
-
-	apiRouter.HandleFunc("/playerStates/{slot}", func(w http.ResponseWriter, r *http.Request) {
-		handler.StoreDeleteHandler(w, r, store, dao)
-	}).Methods("DELETE")
-
-	apiRouter.HandleFunc("/playerStates/{slot}/restore", func(w http.ResponseWriter, r *http.Request) {
-		handler.RestoreHandler(w, r, store, auth, dao)
-	}).Methods("POST")
-
-	apiRouter.HandleFunc("/you", func(w http.ResponseWriter, r *http.Request) {
-		handler.UserExportHandler(w, r, store, dao)
-	}).Methods("GET")
-	apiRouter.HandleFunc("/you", func(w http.ResponseWriter, r *http.Request) {
-		handler.UserDeleteHandler(w, r, store, dao)
-	}).Methods("DELETE")
-
-	// provide the webapp following the SPA pattern: all non-API routes not being able
+	// Provide the webapp following the SPA pattern: all non-API routes not being able
 	// to be resolved within the assets directory will return the webapp entry point.
-	// ATTENTION: This is a catch-all route; every route declared after this one will not match any request!
-	log.Info().Msgf("Loading assets from: '%s'", staticAssetsPath)
-	rootRouter.PathPrefix("/").Handler(spaHandler)
-
-	http.Handle("/", rootRouter)
+	r.NotFound(spaHandler.ServeHTTP)
 
 	var interfacePort = networkInterface + ":" + port
 	log.Info().Msgf("Webserver started on %s", interfacePort)
 
-	err = http.ListenAndServe(interfacePort, context.ClearHandler(http.DefaultServeMux))
+	err = http.ListenAndServe(interfacePort, r)
 	log.Fatal().Err(err).Msg("Server terminated.")
+}
+
+func attachStore(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := context.WithValue(r.Context(), "store", store)
+
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+func attachAuth(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := context.WithValue(r.Context(), "auth", auth)
+
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+func attachDAO(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := context.WithValue(r.Context(), "dao", dao)
+
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+func attachSlot(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		slot, err := checkSlotParameter(r)
+		if err != nil {
+			log.Debug().Err(err).Msg("Could not retrieve slot from request.")
+			http.Error(w, fmt.Sprintf("Could not process request. Please make sure the given slot is valid: %s", err), http.StatusBadRequest)
+			return
+		}
+
+		ctx := context.WithValue(r.Context(), "slot", slot)
+
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+func checkSlotParameter(r *http.Request) (int, error) {
+	var slotStr = chi.URLParam(r, "slot")
+
+	if slotStr == "" {
+		return -1, errors.New("query parameter 'slot' not found")
+	}
+
+	var slot, err = strconv.Atoi(slotStr)
+	if err != nil {
+		return -1, errors.New("query parameter 'slot' is not a valid integer")
+	}
+	if slot < 0 {
+		return -1, errors.New("query parameter 'slot' has to be >= 0")
+	}
+
+	return slot, nil
+}
+
+func debugLogger(nxt http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		token := r.Header.Get(constants.CSRFHeaderName)
+
+		log.Debug().Str("csrfToken", token).Stringer("url", r.URL).Interface("cookies", r.Cookies()).Msg("")
+
+		nxt.ServeHTTP(w, r)
+	})
 }
 
 type csrfErrorHandler struct{}
@@ -190,5 +231,8 @@ func (csrfErrorHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		csrfCookieContent = csrfCookie.Value
 	}
 
-	http.Error(w, fmt.Sprintf("Failed verifying CSRF token. Supplied token: '%s'; Error: '%s'. Expect token to be contained in header '%s'. Cookie named '%s' contains '%s'", csrfToken, failureReason, constants.CSRFHeaderName, constants.CSRFCookieName, csrfCookieContent), http.StatusUnauthorized)
+	http.Error(w,
+		fmt.Sprintf("Failed verifying CSRF token. Supplied token: '%s'; Error: '%s'. Expect token to be contained in header '%s'. Cookie named '%s' contains '%s'",
+			csrfToken, failureReason, constants.CSRFHeaderName, constants.CSRFCookieName, csrfCookieContent),
+		http.StatusUnauthorized)
 }
