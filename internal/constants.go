@@ -2,7 +2,8 @@ package internal
 
 const (
 	SessionCookieName       = "cassette_session"
-	CSRFTokenName           = "cassette_csrf_token"
+	CSRFHeaderName          = "X-Cassette-CSRF"
+	CSRFCookieName          = "cassette_csrf_cookie"
 	ConsentCookieName       = "cassette_consent"
 	DefaultNetworkInterface = "localhost"
 	DefaultPort             = "8080"

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/gob"
+	"fmt"
 	"net/http"
 	"net/url"
 	"os"
@@ -61,7 +62,11 @@ func main() {
 
 	store = sessions.NewCookieStore(secret32Bytes)
 
-	redirectURL, _ = url.Parse(appURL + "spotify-oauth-callback")
+	redirectURL, err = url.Parse(appURL)
+	if err != nil {
+		log.Fatal().Err(err).Str("appURL", appURL).Msgf("'%s' variable is not set to a valid value.", constants.EnvAppURL)
+	}
+	redirectURL.Path = "/spotify-oauth-callback"
 	tmp := spotify.NewAuthenticator(redirectURL.String(), spotify.ScopeUserReadCurrentlyPlaying, spotify.ScopeUserReadPlaybackState, spotify.ScopeUserModifyPlaybackState)
 	auth = &tmp
 
@@ -80,10 +85,11 @@ func main() {
 
 	var csrfMiddleware = csrf.Protect(
 		secret32Bytes,
-		csrf.RequestHeader(constants.CSRFTokenName),
-		csrf.CookieName(constants.CSRFTokenName),
+		csrf.RequestHeader(constants.CSRFHeaderName),
+		csrf.CookieName(constants.CSRFCookieName),
 		csrf.Secure(!isDevMode),
 		csrf.MaxAge(60*60*24*365), // Cookie is valid for 1 year
+		csrf.ErrorHandler(csrfErrorHandler{}),
 	)
 
 	var cwd, _ = os.Getwd()
@@ -96,24 +102,26 @@ func main() {
 	rootRouter.Use(middleware.CreateConsentMiddleware(spaHandler))
 	rootRouter.Use(middleware.CreateSpotifyAuthMiddleware(store, auth, redirectURL))
 
-	apiRouter.Use(csrfMiddleware)
+	if isDevMode {
+		apiRouter.Use(func(nxt http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				token := r.Header.Get(constants.CSRFHeaderName)
 
-	// if isDevMode {
-	// 	apiRouter.Use(func(nxt http.Handler) http.Handler {
-	// 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	// 			log.Printf("%s \"%s\"", r.Method, r.URL.Path)
-	// 			spew.Print(r.Header)
-	// 			nxt.ServeHTTP(w, r)
-	// 		})
-	// 	})
-	// }
+				log.Debug().Str("csrfToken", token).Stringer("url", r.URL).Interface("cookies", r.Cookies()).Msg("")
+
+				nxt.ServeHTTP(w, r)
+			})
+		})
+	}
+
+	apiRouter.Use(csrfMiddleware)
 
 	// this route simply needs to be registered so that the middleware registered at the router gets invoked
 	// on requests for it
 	apiRouter.HandleFunc("/spotify-oauth-callback", func(w http.ResponseWriter, r *http.Request) {})
 
 	apiRouter.HandleFunc("/csrfToken", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set(constants.CSRFTokenName, csrf.Token(r))
+		w.Header().Set(constants.CSRFHeaderName, csrf.Token(r))
 
 		w.WriteHeader(http.StatusOK)
 	}).Methods("HEAD")
@@ -169,4 +177,18 @@ func main() {
 
 	err = http.ListenAndServe(interfacePort, context.ClearHandler(http.DefaultServeMux))
 	log.Fatal().Err(err).Msg("Server terminated.")
+}
+
+type csrfErrorHandler struct{}
+
+func (csrfErrorHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	failureReason := csrf.FailureReason(r)
+	csrfToken := r.Header.Get(constants.CSRFHeaderName)
+	csrfCookie, err := r.Cookie(constants.CSRFCookieName)
+	csrfCookieContent := "ERROR: cookie not present."
+	if err == nil {
+		csrfCookieContent = csrfCookie.Value
+	}
+
+	http.Error(w, fmt.Sprintf("Failed verifying CSRF token. Supplied token: '%s'; Error: '%s'. Expect token to be contained in header '%s'. Cookie named '%s' contains '%s'", csrfToken, failureReason, constants.CSRFHeaderName, constants.CSRFCookieName, csrfCookieContent), http.StatusUnauthorized)
 }

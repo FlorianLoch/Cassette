@@ -1,6 +1,6 @@
 import axios from "axios"
 
-const CSRF_HEADER_NAME = "cassette_csrf_token"
+const CSRF_HEADER_NAME = "X-Cassette-CSRF".toLowerCase()
 const API_PATH = "/api"
 const URL_DATA = API_PATH + "/you"
 const URL_CSRF_TOKEN = API_PATH + "/csrfToken"
