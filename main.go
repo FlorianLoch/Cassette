@@ -23,6 +23,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/zmb3/spotify"
+	spotifyAPI "github.com/zmb3/spotify"
 	"golang.org/x/oauth2"
 )
 
@@ -109,23 +110,30 @@ func main() {
 	r.Use(chiMiddleware.Logger)
 	r.Use(chiMiddleware.Recoverer)
 
+	r.Use(middleware.CreateConsentMiddleware(spaHandler))
+	r.Use(middleware.CreateSpotifyAuthMiddleware(store, auth, redirectURL))
+
+	// Just needs to be registered, the spotifyAuthMiddleware then takes care of handling it
+	r.Get("/spotify-oauth-callback", func(w http.ResponseWriter, r *http.Request) {})
+
 	r.Route("/api", func(r chi.Router) {
 		if isDevMode {
 			r.Use(debugLogger)
 		}
-		r.Use(middleware.CreateConsentMiddleware(spaHandler))
-		r.Use(middleware.CreateSpotifyAuthMiddleware(store, auth, redirectURL))
 		r.Use(csrfMiddleware)
-		r.Use(attachStore)
-
-		// apiRouter.HandleFunc("/spotify-oauth-callback", func(w http.ResponseWriter, r *http.Request) {})
 
 		r.Head("/csrfToken", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set(constants.CSRFHeaderName, csrf.Token(r))
 		})
 
-		r.With(attachAuth).Get("/activeDevices", handler.ActiveDevicesHandler)
-		r.With(attachAuth).With(attachDAO).Route("/playerStates", func(r chi.Router) {
+		r.With(attachDAO).With(attachUser).Route("/you", func(r chi.Router) {
+			r.Get("/", handler.UserExportHandler)
+			r.Delete("/", handler.UserDeleteHandler)
+		})
+
+		r.With(attachSpotifyClient).Get("/activeDevices", handler.ActiveDevicesHandler)
+
+		r.With(attachSpotifyClient).With(attachDAO).With(attachUser).Route("/playerStates", func(r chi.Router) {
 			r.Post("/", handler.StorePostHandler)
 			r.Get("/", handler.StoreGetHandler)
 			r.With(attachSlot).Route("/{slot}", func(r chi.Router) {
@@ -134,12 +142,6 @@ func main() {
 				r.Post("/restore", handler.RestoreHandler)
 			})
 		})
-
-		r.With(attachDAO).Route("/you", func(r chi.Router) {
-			r.Get("/", handler.UserExportHandler)
-			r.Delete("/", handler.UserDeleteHandler)
-		})
-
 	})
 
 	// Provide the webapp following the SPA pattern: all non-API routes not being able
@@ -153,20 +155,82 @@ func main() {
 	log.Fatal().Err(err).Msg("Server terminated.")
 }
 
-func attachStore(next http.Handler) http.Handler {
+func attachUser(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := context.WithValue(r.Context(), "store", store)
+		session := sessionFromRequest(r)
+
+		rawUser, exists := session.Values["user"]
+		if !exists {
+			log.Debug().Msg("'user' not yet set in session. Going to do this.")
+
+			// Once per session-lifetime we have to get the user ID from the spotifyClient.
+			// We then cache it in the session
+			spotifyClient := spotifyClientFromSession(session)
+
+			var err error
+			rawUser, err = spotifyClient.CurrentUser()
+
+			if err != nil {
+				log.Error().Err(err).Msg("Could not fetch information on user from Spotify!")
+				panic("could not fetch information on current user")
+			}
+
+			session.Values["user"] = rawUser
+
+			session.Save(r, w)
+		}
+
+		user, ok := rawUser.(*spotifyAPI.PrivateUser)
+		if !ok {
+			// This should never happen
+			log.Error().Msg("Could not type-assert the stored user!")
+			panic("could not read current user from session cookie")
+		}
+
+		// TODO: Fix this
+		ctx := context.WithValue(r.Context(), "user", user)
 
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
-func attachAuth(next http.Handler) http.Handler {
+func sessionFromRequest(r *http.Request) *sessions.Session {
+	session, err := store.Get(r, constants.SessionCookieName)
+	if err != nil {
+		// This should not never happen except some client tampers with his session.
+		// But then in should fail in the spotifyAuth middleware already...
+		log.Error().Err(err).Msg("Could not access session storage!")
+		panic("could not access session storage")
+	}
+
+	return session
+}
+
+func attachSpotifyClient(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := context.WithValue(r.Context(), "auth", auth)
+		session := sessionFromRequest(r)
+
+		client := spotifyClientFromSession(session)
+
+		ctx := context.WithValue(r.Context(), "spotifyClient", client)
 
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+func spotifyClientFromSession(session *sessions.Session) *spotifyAPI.Client {
+	rawToken := session.Values["spotify-oauth-token"]
+
+	tok, ok := rawToken.(*oauth2.Token)
+	if !ok {
+		// This should never happen
+		log.Error().Interface("rawToken", rawToken).Msg("Could not type-assert the stored token!")
+		panic("could not type-assert the stored token")
+	}
+
+	client := auth.NewClient(tok)
+
+	return &client
 }
 
 func attachDAO(next http.Handler) http.Handler {

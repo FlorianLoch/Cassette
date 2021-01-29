@@ -7,29 +7,25 @@ import (
 	"net/http"
 	"strings"
 
-	constants "github.com/florianloch/cassette/internal"
 	"github.com/florianloch/cassette/internal/persistence"
 	"github.com/florianloch/cassette/internal/spotify"
-	"github.com/gorilla/sessions"
 	"github.com/rs/zerolog/log"
 	spotifyAPI "github.com/zmb3/spotify"
-	"golang.org/x/oauth2"
 )
 
 // TODO: Move to constants file
 const (
-	fieldStore = "store"
-	fieldAuth  = "auth"
-	fieldDao   = "dao"
-	fieldSlot  = "slot"
+	fieldDao           = "dao"
+	fieldSlot          = "slot"
+	fieldUser          = "user"
+	fieldSpotifyClient = "spotifyClient"
 )
 
 func ActiveDevicesHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	store := ctx.Value(fieldStore).(*sessions.CookieStore)
-	auth := ctx.Value(fieldAuth).(*spotifyAPI.Authenticator)
+	spotifyClient := ctx.Value(fieldSpotifyClient).(*spotifyAPI.Client)
 
-	playerDevices, err := spotify.ActiveSpotifyDevices(spotifyClientFromRequest(r, store, auth))
+	playerDevices, err := spotify.ActiveSpotifyDevices(spotifyClient)
 
 	if err != nil {
 		log.Debug().Err(err).Msg("Could not fetch list of active devices.")
@@ -53,16 +49,14 @@ func ActiveDevicesHandler(w http.ResponseWriter, r *http.Request) {
 
 func StorePostHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	store := ctx.Value(fieldStore).(*sessions.CookieStore)
-	auth := ctx.Value(fieldAuth).(*spotifyAPI.Authenticator)
+	user := ctx.Value(fieldUser).(*spotifyAPI.PrivateUser)
+	spotifyClient := ctx.Value(fieldSpotifyClient).(*spotifyAPI.Client)
 	dao := ctx.Value(fieldDao).(*persistence.PlayerStatesDAO)
 	slot, ok := ctx.Value(fieldSlot).(int)
 	if !ok {
 		slot = -1
 	}
 
-	var userID = currentUser(r, store).ID
-	var spotifyClient = spotifyClientFromRequest(r, store, auth)
 	var currentState, err = spotify.CurrentPlayerState(spotifyClient)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get current state of player.")
@@ -70,7 +64,7 @@ func StorePostHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	playerStates, err := dao.LoadPlayerStates(userID)
+	playerStates, err := dao.LoadPlayerStates(user.ID)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed loading player states from DB.")
 		http.Error(w, "Could not retrieve player states from DB.", http.StatusInternalServerError)
@@ -90,7 +84,7 @@ func StorePostHandler(w http.ResponseWriter, r *http.Request) {
 		playerStates = append(playerStates, currentState)
 	}
 
-	err = dao.SavePlayerStates(userID, playerStates)
+	err = dao.SavePlayerStates(user.ID, playerStates)
 	if err != nil {
 		log.Error().Err(err).Interface("playerStates", playerStates).Msg("Could not persist player states in DB.")
 		http.Error(w, "Could not persist player states in DB.", http.StatusInternalServerError)
@@ -108,10 +102,10 @@ func StorePostHandler(w http.ResponseWriter, r *http.Request) {
 
 func StoreGetHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	store := ctx.Value(fieldStore).(*sessions.CookieStore)
+	user := ctx.Value(fieldUser).(*spotifyAPI.PrivateUser)
 	dao := ctx.Value(fieldDao).(*persistence.PlayerStatesDAO)
 
-	var playerStates, err = dao.LoadPlayerStates(currentUser(r, store).ID)
+	var playerStates, err = dao.LoadPlayerStates(user.ID)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed loading player states from DB.")
 		http.Error(w, "Could not retrieve player states from DB.", http.StatusInternalServerError)
@@ -133,13 +127,11 @@ func StoreGetHandler(w http.ResponseWriter, r *http.Request) {
 func StoreDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	// TODO: Add a note that it is ensure that all values are set when these handlers are called?
 	ctx := r.Context()
-	store := ctx.Value(fieldStore).(*sessions.CookieStore)
+	user := ctx.Value(fieldUser).(*spotifyAPI.PrivateUser)
 	dao := ctx.Value(fieldDao).(*persistence.PlayerStatesDAO)
 	slot := ctx.Value(fieldSlot).(int)
 
-	var userID = currentUser(r, store).ID
-
-	playerStates, err := dao.LoadPlayerStates(userID)
+	playerStates, err := dao.LoadPlayerStates(user.ID)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed loading player states from DB.")
 		http.Error(w, "Could not retrieve player states from DB.", http.StatusInternalServerError)
@@ -154,7 +146,7 @@ func StoreDeleteHandler(w http.ResponseWriter, r *http.Request) {
 
 	playerStates = append(playerStates[:slot], playerStates[slot+1:]...)
 
-	err = dao.SavePlayerStates(userID, playerStates)
+	err = dao.SavePlayerStates(user.ID, playerStates)
 	if err != nil {
 		log.Error().Err(err).Interface("playerStates", playerStates).Msg("Could not persist player states in DB.")
 		http.Error(w, "Could not persist player states in DB.", http.StatusInternalServerError)
@@ -163,16 +155,13 @@ func StoreDeleteHandler(w http.ResponseWriter, r *http.Request) {
 
 func RestoreHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	store := ctx.Value(fieldStore).(*sessions.CookieStore)
-	auth := ctx.Value(fieldAuth).(*spotifyAPI.Authenticator)
+	user := ctx.Value(fieldUser).(*spotifyAPI.PrivateUser)
+	spotifyClient := ctx.Value(fieldSpotifyClient).(*spotifyAPI.Client)
 	dao := ctx.Value(fieldDao).(*persistence.PlayerStatesDAO)
 	slot := ctx.Value(fieldSlot).(int)
 
-	var spotifyClient = spotifyClientFromRequest(r, store, auth)
-
 	var deviceID = r.URL.Query().Get("deviceID")
-	var userID = currentUser(r, store).ID
-	playerStates, err := dao.LoadPlayerStates(userID)
+	playerStates, err := dao.LoadPlayerStates(user.ID)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed loading player states from DB.")
 		http.Error(w, "Could not retrieve player states from DB.", http.StatusInternalServerError)
@@ -202,10 +191,10 @@ func RestoreHandler(w http.ResponseWriter, r *http.Request) {
 
 func UserExportHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	store := ctx.Value(fieldStore).(*sessions.CookieStore)
+	user := ctx.Value(fieldUser).(*spotifyAPI.PrivateUser)
 	dao := ctx.Value(fieldDao).(*persistence.PlayerStatesDAO)
 
-	json, err := dao.FetchJSONDump(currentUser(r, store).ID)
+	json, err := dao.FetchJSONDump(user.ID)
 	if err != nil {
 		if errors.Is(err, persistence.ErrUserNotFound) {
 			log.Debug().Msg("User requested to exports her/his data - but nothing found in DB.")
@@ -224,10 +213,10 @@ func UserExportHandler(w http.ResponseWriter, r *http.Request) {
 
 func UserDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	store := ctx.Value(fieldStore).(*sessions.CookieStore)
+	user := ctx.Value(fieldUser).(*spotifyAPI.PrivateUser)
 	dao := ctx.Value(fieldDao).(*persistence.PlayerStatesDAO)
 
-	err := dao.DeleteUserRecord(currentUser(r, store).ID)
+	err := dao.DeleteUserRecord(user.ID)
 	if err != nil {
 		if errors.Is(err, persistence.ErrUserNotFound) {
 			log.Debug().Msg("User requested to delete her/his data - but nothing found in DB.")
@@ -237,43 +226,6 @@ func UserDeleteHandler(w http.ResponseWriter, r *http.Request) {
 			log.Debug().Err(err).Msg("Failed deleting user data.")
 		}
 	}
-}
-
-// TODO: Also attach this in middleware instead of in handler
-func spotifyClientFromRequest(r *http.Request, store *sessions.CookieStore, auth *spotifyAPI.Authenticator) *spotifyAPI.Client {
-	session, _ := store.Get(r, constants.SessionCookieName)
-
-	rawToken := session.Values["spotify-oauth-token"]
-
-	return SpotifyClientFromToken(rawToken, auth)
-}
-
-func currentUser(r *http.Request, store *sessions.CookieStore) *spotifyAPI.PrivateUser {
-	session, _ := store.Get(r, constants.SessionCookieName)
-
-	rawUser := session.Values["user"]
-
-	var user = &spotifyAPI.PrivateUser{}
-	var ok = true
-	if user, ok = rawUser.(*spotifyAPI.PrivateUser); !ok {
-		// Fatal should be fine in this case as this is not an error that should ever occur.
-		log.Fatal().Msg("Could not type-assert the stored user!")
-	}
-
-	return user
-}
-
-func SpotifyClientFromToken(rawToken interface{}, auth *spotifyAPI.Authenticator) *spotifyAPI.Client {
-	var tok = &oauth2.Token{}
-	var ok = true
-	if tok, ok = rawToken.(*oauth2.Token); !ok {
-		// Fatal should be fine in this case as this is not an error that should ever occur.
-		log.Fatal().Interface("rawToken", rawToken).Msg("Could not type-assert the stored token!")
-	}
-
-	client := auth.NewClient(tok)
-
-	return &client
 }
 
 func enrichPlayerStates(playerStates []*persistence.PlayerState) []*enrichedPlayerState {

@@ -9,7 +9,6 @@ import (
 	spotifyAPI "github.com/zmb3/spotify"
 
 	constants "github.com/florianloch/cassette/internal"
-	"github.com/florianloch/cassette/internal/handler"
 	"github.com/florianloch/cassette/internal/util"
 )
 
@@ -59,22 +58,6 @@ func CreateSpotifyAuthMiddleware(store *sessions.CookieStore, auth *spotifyAPI.A
 						// }
 					}
 
-					var client = handler.SpotifyClientFromToken(tok, auth)
-
-					currentUser, err := client.CurrentUser()
-					if err != nil {
-						http.Error(w, "Could not fetch information on user from Spotify", http.StatusInternalServerError)
-						// if isDevMode {
-						log.Fatal("Could not fetch information on current user!", err)
-						// }
-						// return
-					}
-
-					// if isDevMode {
-					log.Println("ID of current user:", currentUser.ID)
-					// }
-
-					session.Values["user"] = currentUser
 					session.Values["spotify-oauth-token"] = tok
 
 					// redirect to the route initially requested
