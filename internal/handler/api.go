@@ -7,23 +7,16 @@ import (
 	"net/http"
 	"strings"
 
+	constants "github.com/florianloch/cassette/internal"
 	"github.com/florianloch/cassette/internal/persistence"
 	"github.com/florianloch/cassette/internal/spotify"
 	"github.com/rs/zerolog/log"
 	spotifyAPI "github.com/zmb3/spotify"
 )
 
-// TODO: Move to constants file
-const (
-	fieldDao           = "dao"
-	fieldSlot          = "slot"
-	fieldUser          = "user"
-	fieldSpotifyClient = "spotifyClient"
-)
-
 func ActiveDevicesHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	spotifyClient := ctx.Value(fieldSpotifyClient).(*spotifyAPI.Client)
+	spotifyClient := ctx.Value(constants.FieldSpotifyClient).(*spotifyAPI.Client)
 
 	playerDevices, err := spotify.ActiveSpotifyDevices(spotifyClient)
 
@@ -49,10 +42,10 @@ func ActiveDevicesHandler(w http.ResponseWriter, r *http.Request) {
 
 func StorePostHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	user := ctx.Value(fieldUser).(*spotifyAPI.PrivateUser)
-	spotifyClient := ctx.Value(fieldSpotifyClient).(*spotifyAPI.Client)
-	dao := ctx.Value(fieldDao).(*persistence.PlayerStatesDAO)
-	slot, ok := ctx.Value(fieldSlot).(int)
+	user := ctx.Value(constants.FieldUser).(*spotifyAPI.PrivateUser)
+	spotifyClient := ctx.Value(constants.FieldSpotifyClient).(*spotifyAPI.Client)
+	dao := ctx.Value(constants.FieldDao).(*persistence.PlayerStatesDAO)
+	slot, ok := ctx.Value(constants.FieldSlot).(int)
 	if !ok {
 		slot = -1
 	}
@@ -102,8 +95,8 @@ func StorePostHandler(w http.ResponseWriter, r *http.Request) {
 
 func StoreGetHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	user := ctx.Value(fieldUser).(*spotifyAPI.PrivateUser)
-	dao := ctx.Value(fieldDao).(*persistence.PlayerStatesDAO)
+	user := ctx.Value(constants.FieldUser).(*spotifyAPI.PrivateUser)
+	dao := ctx.Value(constants.FieldDao).(*persistence.PlayerStatesDAO)
 
 	var playerStates, err = dao.LoadPlayerStates(user.ID)
 	if err != nil {
@@ -127,9 +120,9 @@ func StoreGetHandler(w http.ResponseWriter, r *http.Request) {
 func StoreDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	// TODO: Add a note that it is ensure that all values are set when these handlers are called?
 	ctx := r.Context()
-	user := ctx.Value(fieldUser).(*spotifyAPI.PrivateUser)
-	dao := ctx.Value(fieldDao).(*persistence.PlayerStatesDAO)
-	slot := ctx.Value(fieldSlot).(int)
+	user := ctx.Value(constants.FieldUser).(*spotifyAPI.PrivateUser)
+	dao := ctx.Value(constants.FieldDao).(*persistence.PlayerStatesDAO)
+	slot := ctx.Value(constants.FieldSlot).(int)
 
 	playerStates, err := dao.LoadPlayerStates(user.ID)
 	if err != nil {
@@ -155,10 +148,10 @@ func StoreDeleteHandler(w http.ResponseWriter, r *http.Request) {
 
 func RestoreHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	user := ctx.Value(fieldUser).(*spotifyAPI.PrivateUser)
-	spotifyClient := ctx.Value(fieldSpotifyClient).(*spotifyAPI.Client)
-	dao := ctx.Value(fieldDao).(*persistence.PlayerStatesDAO)
-	slot := ctx.Value(fieldSlot).(int)
+	user := ctx.Value(constants.FieldUser).(*spotifyAPI.PrivateUser)
+	spotifyClient := ctx.Value(constants.FieldSpotifyClient).(*spotifyAPI.Client)
+	dao := ctx.Value(constants.FieldDao).(*persistence.PlayerStatesDAO)
+	slot := ctx.Value(constants.FieldSlot).(int)
 
 	var deviceID = r.URL.Query().Get("deviceID")
 	playerStates, err := dao.LoadPlayerStates(user.ID)
@@ -191,8 +184,8 @@ func RestoreHandler(w http.ResponseWriter, r *http.Request) {
 
 func UserExportHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	user := ctx.Value(fieldUser).(*spotifyAPI.PrivateUser)
-	dao := ctx.Value(fieldDao).(*persistence.PlayerStatesDAO)
+	user := ctx.Value(constants.FieldUser).(*spotifyAPI.PrivateUser)
+	dao := ctx.Value(constants.FieldDao).(*persistence.PlayerStatesDAO)
 
 	json, err := dao.FetchJSONDump(user.ID)
 	if err != nil {
@@ -213,8 +206,8 @@ func UserExportHandler(w http.ResponseWriter, r *http.Request) {
 
 func UserDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	user := ctx.Value(fieldUser).(*spotifyAPI.PrivateUser)
-	dao := ctx.Value(fieldDao).(*persistence.PlayerStatesDAO)
+	user := ctx.Value(constants.FieldUser).(*spotifyAPI.PrivateUser)
+	dao := ctx.Value(constants.FieldDao).(*persistence.PlayerStatesDAO)
 
 	err := dao.DeleteUserRecord(user.ID)
 	if err != nil {

@@ -18,4 +18,13 @@ const (
 	EnvMongoURI            = "CASSETTE_MONGODB_URI"
 	EnvSpotifyClientID     = "CASSETTE_SPOTIFY_CLIENT_ID"
 	EnvSpotifyClientSecret = "CASSETTE_SPOTIFY_CLIENT_KEY"
+
+	// keys for context fields
+	FieldSession       = ctxKey("session")
+	FieldDao           = ctxKey("dao")
+	FieldSlot          = ctxKey("slot")
+	FieldUser          = ctxKey("user")
+	FieldSpotifyClient = ctxKey("spotifyClient")
 )
+
+type ctxKey string

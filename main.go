@@ -166,7 +166,7 @@ func attachSession(next http.Handler) http.Handler {
 			log.Panic().Err(err).Msg("Could not access session storage!")
 		}
 
-		newCtx := context.WithValue(r.Context(), "session", session)
+		newCtx := context.WithValue(r.Context(), constants.FieldSession, session)
 
 		next.ServeHTTP(w, r.WithContext(newCtx))
 	})
@@ -175,7 +175,7 @@ func attachSession(next http.Handler) http.Handler {
 func attachUser(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		session := ctx.Value("session").(*sessions.Session)
+		session := ctx.Value(constants.FieldSession).(*sessions.Session)
 
 		rawUser, exists := session.Values["user"]
 		if !exists {
@@ -203,8 +203,7 @@ func attachUser(next http.Handler) http.Handler {
 			log.Panic().Msg("Could not read current user from session!")
 		}
 
-		// TODO: Fix this
-		newCtx := context.WithValue(ctx, "user", user)
+		newCtx := context.WithValue(ctx, constants.FieldUser, user)
 
 		next.ServeHTTP(w, r.WithContext(newCtx))
 	})
@@ -213,11 +212,11 @@ func attachUser(next http.Handler) http.Handler {
 func attachSpotifyClient(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		session := ctx.Value("session").(*sessions.Session)
+		session := ctx.Value(constants.FieldSession).(*sessions.Session)
 
 		client := spotifyClientFromSession(session)
 
-		newCtx := context.WithValue(ctx, "spotifyClient", client)
+		newCtx := context.WithValue(ctx, constants.FieldSpotifyClient, client)
 
 		next.ServeHTTP(w, r.WithContext(newCtx))
 	})
@@ -239,7 +238,7 @@ func spotifyClientFromSession(session *sessions.Session) *spotifyAPI.Client {
 
 func attachDAO(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		newCtx := context.WithValue(r.Context(), "dao", dao)
+		newCtx := context.WithValue(r.Context(), constants.FieldDao, dao)
 
 		next.ServeHTTP(w, r.WithContext(newCtx))
 	})
@@ -254,7 +253,7 @@ func attachSlot(next http.Handler) http.Handler {
 			return
 		}
 
-		newCtx := context.WithValue(r.Context(), "slot", slot)
+		newCtx := context.WithValue(r.Context(), constants.FieldSlot, slot)
 
 		next.ServeHTTP(w, r.WithContext(newCtx))
 	})

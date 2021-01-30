@@ -8,6 +8,7 @@ import (
 	"github.com/gorilla/sessions"
 	spotifyAPI "github.com/zmb3/spotify"
 
+	constants "github.com/florianloch/cassette/internal"
 	"github.com/florianloch/cassette/internal/util"
 	"github.com/rs/zerolog/log"
 )
@@ -18,7 +19,7 @@ func CreateSpotifyAuthMiddleware(
 	redirectURL *url.URL) (func(http.Handler) http.Handler, http.HandlerFunc) {
 	spotAuthMiddleware := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			session := r.Context().Value("session").(*sessions.Session)
+			session := r.Context().Value(constants.FieldSession).(*sessions.Session)
 
 			if _, ok := session.Values["spotify-oauth-token"]; ok {
 				log.Debug().Msg("OAuth token already present. Nothing to do.")
@@ -52,7 +53,7 @@ func CreateSpotifyAuthMiddleware(
 		})
 	}
 	spotOAuthCBHandler := func(w http.ResponseWriter, r *http.Request) {
-		session := r.Context().Value("session").(*sessions.Session)
+		session := r.Context().Value(constants.FieldSession).(*sessions.Session)
 
 		randomState := randomStateFromSession(session)
 
@@ -74,7 +75,7 @@ func CreateSpotifyAuthMiddleware(
 		// Redirect to the route initially requested
 		initiallyRequestedRoute, ok := session.Values["initially-requested-route"]
 		if !ok {
-			// client should really not be here... this happens when requesting this route straight away not being
+			// Client should really not be here... this happens when requesting this route straight away not being
 			// redirecting via Spotify. Or in case the session got lost with should not occur.
 			http.Error(w, "This route should not be requested directly.", http.StatusForbidden)
 			log.Error().Msg("Client requested the OAuth callback route directly.")
