@@ -17,6 +17,7 @@ import (
 	"github.com/florianloch/cassette/internal/persistence"
 	"github.com/florianloch/cassette/internal/util"
 
+	"github.com/NYTimes/gziphandler"
 	"github.com/go-chi/chi"
 	chiMiddleware "github.com/go-chi/chi/middleware"
 	"github.com/gorilla/csrf"
@@ -105,7 +106,9 @@ func main() {
 
 	var cwd, _ = os.Getwd()
 	var staticAssetsPath = cwd + webStaticContentPath
-	var spaHandler = handler.NewSpaHandler(staticAssetsPath, "index.html")
+	var spaHandler = handler.
+		NewSpaHandler(staticAssetsPath, "index.html").
+		SetFileServer(gziphandler.GzipHandler(http.FileServer(http.Dir(staticAssetsPath))))
 	log.Info().Msgf("Loading assets from: '%s'", staticAssetsPath)
 
 	r := chi.NewRouter()

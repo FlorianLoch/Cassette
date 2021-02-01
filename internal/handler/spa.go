@@ -30,6 +30,12 @@ func NewSpaHandler(staticPath string, indexPath string) *spaHandler {
 	}
 }
 
+func (h *spaHandler) SetFileServer(handler http.Handler) *spaHandler {
+	h.fileServer = handler
+
+	return h
+}
+
 // ServeHTTP inspects the URL path to locate a file within the static dir
 // on the SPA handler. If a file is found, it will be served. If not, the
 // file located at the index path on the SPA handler will be served. This

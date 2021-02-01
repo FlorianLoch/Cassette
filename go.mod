@@ -3,6 +3,7 @@ module github.com/florianloch/cassette
 go 1.15
 
 require (
+	github.com/NYTimes/gziphandler v1.1.1
 	github.com/aws/aws-sdk-go v1.35.7 // indirect
 	github.com/go-chi/chi v1.5.1
 	github.com/golang/snappy v0.0.2 // indirect
