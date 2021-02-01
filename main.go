@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"time"
 
 	constants "github.com/florianloch/cassette/internal"
 	"github.com/florianloch/cassette/internal/handler"
@@ -21,6 +22,7 @@ import (
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/sessions"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/hlog"
 	"github.com/rs/zerolog/log"
 	"github.com/zmb3/spotify"
 	spotifyAPI "github.com/zmb3/spotify"
@@ -109,7 +111,17 @@ func main() {
 	r := chi.NewRouter()
 
 	r.Use(chiMiddleware.RequestID)
-	r.Use(chiMiddleware.Logger)
+	r.Use(hlog.NewHandler(log.Logger))
+	r.Use(middleware.ChiRequestIDHandler("reqID", ""))
+	r.Use(hlog.AccessHandler(func(r *http.Request, status, size int, duration time.Duration) {
+		hlog.FromRequest(r).Info().
+			Dur("dur(ms)", duration).
+			Int("size(bytes)", size).
+			Int("status", status).
+			Stringer("url", r.URL).
+			Str("verb", r.Method).
+			Msg("")
+	}))
 	r.Use(chiMiddleware.Recoverer)
 
 	r.Use(middleware.CreateConsentMiddleware(spaHandler))
@@ -119,9 +131,9 @@ func main() {
 	r.Get(redirectURL.Path, spotOAuthCBHandler)
 
 	r.Route("/api", func(r chi.Router) {
-		if isDevMode {
-			r.Use(debugLogger)
-		}
+		// if isDevMode {
+		// 	r.Use(debugLogger)
+		// }
 		r.Use(csrfMiddleware)
 
 		r.Head("/csrfToken", func(w http.ResponseWriter, r *http.Request) {
