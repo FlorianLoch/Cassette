@@ -3,9 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
-	"strings"
 
 	constants "github.com/florianloch/cassette/internal"
 	"github.com/florianloch/cassette/internal/persistence"
@@ -227,23 +225,11 @@ func enrichPlayerStates(playerStates []*persistence.PlayerState) []*enrichedPlay
 	for i, playerState := range playerStates {
 		enrichedPlayerStates[i] = &enrichedPlayerState{
 			PlayerState:   playerState,
-			LinkToContext: linkToContext(playerState.PlaybackContextURI),
+			LinkToContext: spotify.LinkToContext(playerState.PlaybackContextURI),
 		}
 	}
 
 	return enrichedPlayerStates
-}
-
-func linkToContext(playbackContextURI string) string {
-	splits := strings.Split(playbackContextURI, ":")
-
-	if len(splits) != 3 {
-		log.Error().Str("playbackContextURI", playbackContextURI).Interface("splits", splits).Msg("Splitting context URI did not result in 3 parts.")
-
-		return ""
-	}
-
-	return fmt.Sprintf("https://open.spotify.com/%s/%s", splits[1], splits[2])
 }
 
 type enrichedPlayerState struct {
