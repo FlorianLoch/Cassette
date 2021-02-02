@@ -18,3 +18,10 @@ func LinkToContext(playbackContextURI string) string {
 
 	return fmt.Sprintf("https://open.spotify.com/%s/%s", splits[1], splits[2])
 }
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}

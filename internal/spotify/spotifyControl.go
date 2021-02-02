@@ -10,8 +10,6 @@ import (
 	spotifyAPI "github.com/zmb3/spotify"
 )
 
-// TODO: Replace verbose var declaration with shorthand version for consistency
-
 func isContextResumable(playbackContext spotifyAPI.PlaybackContext) bool {
 	t := playbackContext.Type
 
@@ -19,7 +17,7 @@ func isContextResumable(playbackContext spotifyAPI.PlaybackContext) bool {
 }
 
 func CurrentPlayerState(client SpotClient) (*persistence.PlayerState, error) {
-	var currentlyPlaying, err = client.PlayerCurrentlyPlaying()
+	currentlyPlaying, err := client.PlayerCurrentlyPlaying()
 	if err != nil {
 		log.Println("Could not read whats currently playing!", err)
 		return nil, errors.New("could not read whats currently playing")
@@ -31,7 +29,7 @@ func CurrentPlayerState(client SpotClient) (*persistence.PlayerState, error) {
 	}
 
 	playerState, err := client.PlayerState()
-	var shuffleActivated = false
+	shuffleActivated := false
 	if err == nil {
 		shuffleActivated = playerState.ShuffleState
 	} else {
@@ -46,18 +44,16 @@ func PausePlayer(client SpotClient) error {
 }
 
 func RestorePlayerState(client SpotClient, stateToLoad *persistence.PlayerState, deviceID string) error {
-	var err = client.Shuffle(stateToLoad.ShuffleActivated)
+	err := client.Shuffle(stateToLoad.ShuffleActivated)
 	if err != nil {
 		return err
 	}
 
-	if stateToLoad.Progress >= constants.JumpBackNSeconds*1e3 {
-		stateToLoad.Progress -= constants.JumpBackNSeconds * 1e3
-	}
+	stateToLoad.Progress -= min(stateToLoad.Progress, constants.JumpBackNSeconds*1e3)
 
-	var contextURI = spotifyAPI.URI(stateToLoad.PlaybackContextURI)
-	var itemURI = spotifyAPI.URI(stateToLoad.PlaybackItemURI)
-	var spotifyPlayOptions = &spotifyAPI.PlayOptions{
+	contextURI := spotifyAPI.URI(stateToLoad.PlaybackContextURI)
+	itemURI := spotifyAPI.URI(stateToLoad.PlaybackItemURI)
+	spotifyPlayOptions := &spotifyAPI.PlayOptions{
 		PlaybackContext: &contextURI,
 		PlaybackOffset:  &spotifyAPI.PlaybackOffset{URI: itemURI},
 		PositionMs:      stateToLoad.Progress,
@@ -107,8 +103,8 @@ func currentDeviceForPlayback(client SpotClient) (spotifyAPI.ID, error) {
 }
 
 func playerStateFromCurrentlyPlaying(currentlyPlaying *spotifyAPI.CurrentlyPlaying, shuffleActivated bool) *persistence.PlayerState {
-	var item = currentlyPlaying.Item
-	var joinedArtists = ""
+	item := currentlyPlaying.Item
+	joinedArtists := ""
 	for idx, artist := range item.Artists {
 		joinedArtists += artist.Name
 		if idx < len(item.Artists)-1 {
