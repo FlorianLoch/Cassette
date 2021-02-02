@@ -42,7 +42,7 @@ func StorePostHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := ctx.Value(constants.FieldUser).(*spotifyAPI.PrivateUser)
 	spotifyClient := ctx.Value(constants.FieldSpotifyClient).(spotify.SpotClient)
-	dao := ctx.Value(constants.FieldDao).(*persistence.PlayerStatesDAO)
+	dao := ctx.Value(constants.FieldDao).(persistence.PlayerStatesPersistor)
 	slot, ok := ctx.Value(constants.FieldSlot).(int)
 	if !ok {
 		slot = -1
@@ -94,7 +94,7 @@ func StorePostHandler(w http.ResponseWriter, r *http.Request) {
 func StoreGetHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := ctx.Value(constants.FieldUser).(*spotifyAPI.PrivateUser)
-	dao := ctx.Value(constants.FieldDao).(*persistence.PlayerStatesDAO)
+	dao := ctx.Value(constants.FieldDao).(persistence.PlayerStatesPersistor)
 
 	var playerStates, err = dao.LoadPlayerStates(user.ID)
 	if err != nil {
@@ -119,7 +119,7 @@ func StoreDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	// TODO: Add a note that it is ensure that all values are set when these handlers are called?
 	ctx := r.Context()
 	user := ctx.Value(constants.FieldUser).(*spotifyAPI.PrivateUser)
-	dao := ctx.Value(constants.FieldDao).(*persistence.PlayerStatesDAO)
+	dao := ctx.Value(constants.FieldDao).(persistence.PlayerStatesPersistor)
 	slot := ctx.Value(constants.FieldSlot).(int)
 
 	playerStates, err := dao.LoadPlayerStates(user.ID)
@@ -148,7 +148,7 @@ func RestoreHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := ctx.Value(constants.FieldUser).(*spotifyAPI.PrivateUser)
 	spotifyClient := ctx.Value(constants.FieldSpotifyClient).(spotify.SpotClient)
-	dao := ctx.Value(constants.FieldDao).(*persistence.PlayerStatesDAO)
+	dao := ctx.Value(constants.FieldDao).(persistence.PlayerStatesPersistor)
 	slot := ctx.Value(constants.FieldSlot).(int)
 
 	var deviceID = r.URL.Query().Get("deviceID")
@@ -183,7 +183,7 @@ func RestoreHandler(w http.ResponseWriter, r *http.Request) {
 func UserExportHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := ctx.Value(constants.FieldUser).(*spotifyAPI.PrivateUser)
-	dao := ctx.Value(constants.FieldDao).(*persistence.PlayerStatesDAO)
+	dao := ctx.Value(constants.FieldDao).(persistence.PlayerStatesPersistor)
 
 	json, err := dao.FetchJSONDump(user.ID)
 	if err != nil {
@@ -205,7 +205,7 @@ func UserExportHandler(w http.ResponseWriter, r *http.Request) {
 func UserDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := ctx.Value(constants.FieldUser).(*spotifyAPI.PrivateUser)
-	dao := ctx.Value(constants.FieldDao).(*persistence.PlayerStatesDAO)
+	dao := ctx.Value(constants.FieldDao).(persistence.PlayerStatesPersistor)
 
 	err := dao.DeleteUserRecord(user.ID)
 	if err != nil {

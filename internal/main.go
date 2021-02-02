@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -31,15 +32,13 @@ import (
 )
 
 var (
-	redirectURL *url.URL
-	auth        spotify.SpotAuthenticator
-	store       *sessions.CookieStore
-	dao         *persistence.PlayerStatesDAO
+	auth  spotify.SpotAuthenticator
+	store *sessions.CookieStore
+	dao   persistence.PlayerStatesPersistor
 	// createSpotClient is required to use different initilisation code for testing
 	// for production environment
-	createSpotClient     spotClientCreator
-	isDevMode            bool
-	webStaticContentPath = "/web/dist"
+	createSpotClient spotClientCreator
+	isDevMode        bool
 )
 
 type spotClientCreator func(token *oauth2.Token) spotify.SpotClient
@@ -60,49 +59,57 @@ func RunInProduction() {
 	port := util.Env(constants.EnvPort, os.Getenv("PORT"))
 	appURL := util.Env(constants.EnvAppURL, "http://"+networkInterface+":"+port+"/")
 
-	secret32Bytes, err := util.Make32ByteSecret(util.Env(constants.EnvSecret, ""))
-	if err != nil {
-		log.Fatal().Err(err).Msg("Could not generate secret. Aborting.")
-	}
-
 	mongoDBURI := util.Env(constants.EnvMongoURI, "")
 	if mongoDBURI == "" {
 		log.Fatal().Msg("No URI for connecting to MongoDB given. Aborting.")
 	}
+	var err error
 	dao, err = persistence.Connect(mongoDBURI)
 	if err != nil {
 		log.Fatal().Err(err).Str("mongoDBURI", mongoDBURI).Msg("Failed connecting to MongoDB.")
 	}
 
-	store = sessions.NewCookieStore(secret32Bytes)
-	store.Options.HttpOnly = true
-	store.Options.Secure = !isDevMode
-	store.Options.SameSite = http.SameSiteLaxMode
-
-	redirectURL, err = url.Parse(appURL)
+	redirectURL, err := url.Parse(appURL)
 	if err != nil {
 		log.Fatal().Err(err).Str("appURL", appURL).Msgf("'%s' variable is not set to a valid value.", constants.EnvAppURL)
 	}
-	redirectURL.Path = "/spotify-oauth-callback"
+	redirectURL.Path = constants.OAuthCallbackRoute
 
 	tmp := spotifyAPI.NewAuthenticator(redirectURL.String(), spotifyAPI.ScopeUserReadCurrentlyPlaying, spotifyAPI.ScopeUserReadPlaybackState, spotifyAPI.ScopeUserModifyPlaybackState)
 	auth = &tmp
+
+	clientID := util.Env(constants.EnvSpotifyClientID, "")
+	clientSecret := util.Env(constants.EnvSpotifyClientSecret, "")
+
+	if clientID == "" || clientSecret == "" {
+		log.Fatal().Msgf("Please make sure '%s' and '%s' are set. Aborting.", constants.EnvSpotifyClientID, constants.EnvSpotifyClientSecret)
+	}
+
+	auth.SetAuthInfo(clientID, clientSecret)
 
 	createSpotClient = func(token *oauth2.Token) spotify.SpotClient {
 		client := auth.NewClient(token)
 		return &client
 	}
 
-	r := setupAPI(secret32Bytes)
+	cwd, err := os.Getwd()
+	if err != nil {
+		log.Fatal().Err(err).Msg("Could not get current working directory.")
+	}
+	r := setupAPI(cwd)
 
-	var interfacePort = networkInterface + ":" + port
+	interfacePort := networkInterface + ":" + port
 	log.Info().Msgf("Webserver started on %s", interfacePort)
 
 	err = http.ListenAndServe(interfacePort, r)
 	log.Fatal().Err(err).Msg("Server terminated.")
 }
 
-func SetupForTest(mockedAuth spotify.SpotAuthenticator, spotClientMockCreator spotClientCreator) http.Handler {
+func SetupForTest(
+	daoMock persistence.PlayerStatesPersistor,
+	authMock spotify.SpotAuthenticator,
+	spotClientMockCreator spotClientCreator,
+	webRoot string) http.Handler {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout})
 	zerolog.SetGlobalLevel(zerolog.ErrorLevel)
 
@@ -112,44 +119,31 @@ func SetupForTest(mockedAuth spotify.SpotAuthenticator, spotClientMockCreator sp
 		log.Debug().Msg("Running in DEV mode. Being more verbose. Set environment variable 'ENV' to 'DEV' to activate.")
 	}
 
+	dao = daoMock
+
+	auth = authMock
+
+	createSpotClient = spotClientMockCreator
+
+	return setupAPI(webRoot)
+}
+
+func setupAPI(webRoot string) http.Handler {
+	gob.Register(&spotifyAPI.PrivateUser{})
+	gob.Register(&oauth2.Token{})
+	gob.Register(&m{})
+
 	secret32Bytes, err := util.Make32ByteSecret(util.Env(constants.EnvSecret, ""))
 	if err != nil {
 		log.Fatal().Err(err).Msg("Could not generate secret. Aborting.")
 	}
 
-	mongoDBURI := util.Env(constants.EnvMongoURI, "")
-	if mongoDBURI == "" {
-		log.Fatal().Msg("No URI for connecting to MongoDB given. Aborting.")
-	}
-	dao, err = persistence.Connect(mongoDBURI)
-	if err != nil {
-		log.Fatal().Err(err).Str("mongoDBURI", mongoDBURI).Msg("Failed connecting to MongoDB.")
-	}
-
 	store = sessions.NewCookieStore(secret32Bytes)
+	store.Options.HttpOnly = true
+	store.Options.Secure = !isDevMode
+	store.Options.SameSite = http.SameSiteLaxMode
 
-	auth = mockedAuth
-
-	createSpotClient = spotClientMockCreator
-
-	return setupAPI(secret32Bytes)
-}
-
-func setupAPI(secret32Bytes []byte) http.Handler {
-	gob.Register(&spotifyAPI.PrivateUser{})
-	gob.Register(&oauth2.Token{})
-	gob.Register(&m{})
-
-	var clientID = util.Env(constants.EnvSpotifyClientID, "")
-	var clientSecret = util.Env(constants.EnvSpotifyClientSecret, "")
-
-	if clientID == "" || clientSecret == "" {
-		log.Fatal().Msgf("Please make sure '%s' and '%s' are set. Aborting.", constants.EnvSpotifyClientID, constants.EnvSpotifyClientSecret)
-	}
-
-	auth.SetAuthInfo(clientID, clientSecret)
-
-	var csrfMiddleware = csrf.Protect(
+	csrfMiddleware := csrf.Protect(
 		secret32Bytes,
 		csrf.RequestHeader(constants.CSRFHeaderName),
 		csrf.CookieName(constants.CSRFCookieName),
@@ -160,11 +154,10 @@ func setupAPI(secret32Bytes []byte) http.Handler {
 		csrf.ErrorHandler(csrfErrorHandler{}),
 	)
 
-	spotAuthMiddleware, spotOAuthCBHandler := middleware.CreateSpotifyAuthMiddleware(auth, redirectURL)
+	spotAuthMiddleware, spotOAuthCBHandler := middleware.CreateSpotifyAuthMiddleware(auth)
 
-	var cwd, _ = os.Getwd()
-	var staticAssetsPath = cwd + webStaticContentPath
-	var spaHandler = handler.
+	staticAssetsPath := filepath.Join(webRoot, constants.WebStaticContentPath)
+	spaHandler := handler.
 		NewSpaHandler(staticAssetsPath, "index.html").
 		SetFileServer(gziphandler.GzipHandler(http.FileServer(http.Dir(staticAssetsPath))))
 	log.Info().Msgf("Loading assets from: '%s'", staticAssetsPath)
@@ -187,7 +180,7 @@ func setupAPI(secret32Bytes []byte) http.Handler {
 
 	r.Use(attachSession)
 
-	r.Get(redirectURL.Path, spotOAuthCBHandler)
+	r.Get(constants.OAuthCallbackRoute, spotOAuthCBHandler)
 
 	r.Route("/api", func(r chi.Router) {
 		// if isDevMode {

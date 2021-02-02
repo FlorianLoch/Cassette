@@ -8,6 +8,8 @@ const (
 	DefaultNetworkInterface = "localhost"
 	DefaultPort             = "8080"
 	JumpBackNSeconds        = 10
+	WebStaticContentPath    = "./web/dist"
+	OAuthCallbackRoute      = "/spotify-oauth-callback"
 
 	// names of envs
 	EnvENV                 = "CASSETTE_ENV"

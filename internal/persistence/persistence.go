@@ -25,6 +25,13 @@ var (
 	ErrUserNotFound = errors.New("user not found in db")
 )
 
+type PlayerStatesPersistor interface {
+	LoadPlayerStates(userID string) ([]*PlayerState, error)
+	SavePlayerStates(userID string, playerStates []*PlayerState) error
+	FetchJSONDump(userID string) ([]byte, error)
+	DeleteUserRecord(userID string) error
+}
+
 type PlayerStatesDAO struct {
 	collection *mongo.Collection
 }

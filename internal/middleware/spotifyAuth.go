@@ -3,7 +3,6 @@ package middleware
 import (
 	"fmt"
 	"net/http"
-	"net/url"
 
 	"github.com/gorilla/sessions"
 
@@ -13,9 +12,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func CreateSpotifyAuthMiddleware(
-	auth spotify.SpotAuthenticator,
-	redirectURL *url.URL) (func(http.Handler) http.Handler, http.HandlerFunc) {
+func CreateSpotifyAuthMiddleware(auth spotify.SpotAuthenticator) (func(http.Handler) http.Handler, http.HandlerFunc) {
 	spotAuthMiddleware := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			session := r.Context().Value(constants.FieldSession).(*sessions.Session)
@@ -28,7 +25,7 @@ func CreateSpotifyAuthMiddleware(
 				return
 			}
 
-			if r.URL.Path == redirectURL.Path {
+			if r.URL.Path == constants.OAuthCallbackRoute {
 				// Let the callback route resp. its handler handle this case
 				next.ServeHTTP(w, r)
 				return
