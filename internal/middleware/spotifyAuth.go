@@ -6,15 +6,15 @@ import (
 	"net/url"
 
 	"github.com/gorilla/sessions"
-	spotifyAPI "github.com/zmb3/spotify"
 
-	constants "github.com/florianloch/cassette/internal"
+	"github.com/florianloch/cassette/internal/constants"
+	"github.com/florianloch/cassette/internal/spotify"
 	"github.com/florianloch/cassette/internal/util"
 	"github.com/rs/zerolog/log"
 )
 
 func CreateSpotifyAuthMiddleware(
-	auth *spotifyAPI.Authenticator,
+	auth spotify.SpotAuthenticator,
 	redirectURL *url.URL) (func(http.Handler) http.Handler, http.HandlerFunc) {
 	spotAuthMiddleware := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

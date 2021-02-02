@@ -4,19 +4,21 @@ import (
 	"errors"
 	"log"
 
-	constants "github.com/florianloch/cassette/internal"
+	"github.com/florianloch/cassette/internal/constants"
 	"github.com/florianloch/cassette/internal/persistence"
 
-	"github.com/zmb3/spotify"
+	spotifyAPI "github.com/zmb3/spotify"
 )
 
-func isContextResumable(playbackContext spotify.PlaybackContext) bool {
+// TODO: Replace verbose var declaration with shorthand version for consistency
+
+func isContextResumable(playbackContext spotifyAPI.PlaybackContext) bool {
 	t := playbackContext.Type
 
 	return t == "album" || t == "playlist"
 }
 
-func CurrentPlayerState(client *spotify.Client) (*persistence.PlayerState, error) {
+func CurrentPlayerState(client SpotClient) (*persistence.PlayerState, error) {
 	var currentlyPlaying, err = client.PlayerCurrentlyPlaying()
 	if err != nil {
 		log.Println("Could not read whats currently playing!", err)
@@ -39,11 +41,11 @@ func CurrentPlayerState(client *spotify.Client) (*persistence.PlayerState, error
 	return playerStateFromCurrentlyPlaying(currentlyPlaying, shuffleActivated), nil
 }
 
-func PausePlayer(client *spotify.Client) error {
+func PausePlayer(client SpotClient) error {
 	return client.Pause()
 }
 
-func RestorePlayerState(client *spotify.Client, stateToLoad *persistence.PlayerState, deviceID string) error {
+func RestorePlayerState(client SpotClient, stateToLoad *persistence.PlayerState, deviceID string) error {
 	var err = client.Shuffle(stateToLoad.ShuffleActivated)
 	if err != nil {
 		return err
@@ -53,15 +55,15 @@ func RestorePlayerState(client *spotify.Client, stateToLoad *persistence.PlayerS
 		stateToLoad.Progress -= constants.JumpBackNSeconds * 1e3
 	}
 
-	var contextURI = spotify.URI(stateToLoad.PlaybackContextURI)
-	var itemURI = spotify.URI(stateToLoad.PlaybackItemURI)
-	var spotifyPlayOptions = &spotify.PlayOptions{
+	var contextURI = spotifyAPI.URI(stateToLoad.PlaybackContextURI)
+	var itemURI = spotifyAPI.URI(stateToLoad.PlaybackItemURI)
+	var spotifyPlayOptions = &spotifyAPI.PlayOptions{
 		PlaybackContext: &contextURI,
-		PlaybackOffset:  &spotify.PlaybackOffset{URI: itemURI},
+		PlaybackOffset:  &spotifyAPI.PlaybackOffset{URI: itemURI},
 		PositionMs:      stateToLoad.Progress,
 	}
 
-	var id spotify.ID
+	var id spotifyAPI.ID
 	if deviceID == "" {
 		var err error
 		id, err = currentDeviceForPlayback(client)
@@ -69,7 +71,7 @@ func RestorePlayerState(client *spotify.Client, stateToLoad *persistence.PlayerS
 			return err
 		}
 	} else {
-		id = spotify.ID(deviceID)
+		id = spotifyAPI.ID(deviceID)
 	}
 
 	spotifyPlayOptions.DeviceID = &id
@@ -84,7 +86,7 @@ func RestorePlayerState(client *spotify.Client, stateToLoad *persistence.PlayerS
 	return nil
 }
 
-func currentDeviceForPlayback(client *spotify.Client) (spotify.ID, error) {
+func currentDeviceForPlayback(client SpotClient) (spotifyAPI.ID, error) {
 	devices, err := client.PlayerDevices()
 
 	if err != nil {
@@ -104,7 +106,7 @@ func currentDeviceForPlayback(client *spotify.Client) (spotify.ID, error) {
 	return devices[0].ID, nil
 }
 
-func playerStateFromCurrentlyPlaying(currentlyPlaying *spotify.CurrentlyPlaying, shuffleActivated bool) *persistence.PlayerState {
+func playerStateFromCurrentlyPlaying(currentlyPlaying *spotifyAPI.CurrentlyPlaying, shuffleActivated bool) *persistence.PlayerState {
 	var item = currentlyPlaying.Item
 	var joinedArtists = ""
 	for idx, artist := range item.Artists {
@@ -123,7 +125,7 @@ type CondensedPlayerDevice struct {
 	Active bool   `json:"active"`
 }
 
-func ActiveSpotifyDevices(client *spotify.Client) ([]CondensedPlayerDevice, error) {
+func ActiveSpotifyDevices(client SpotClient) ([]CondensedPlayerDevice, error) {
 	devices, err := client.PlayerDevices()
 
 	if err != nil {

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-	constants "github.com/florianloch/cassette/internal"
+	"github.com/florianloch/cassette/internal/constants"
 	"github.com/florianloch/cassette/internal/persistence"
 	"github.com/florianloch/cassette/internal/spotify"
 	"github.com/rs/zerolog/log"
@@ -14,7 +14,7 @@ import (
 
 func ActiveDevicesHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	spotifyClient := ctx.Value(constants.FieldSpotifyClient).(*spotifyAPI.Client)
+	spotifyClient := ctx.Value(constants.FieldSpotifyClient).(spotify.SpotClient)
 
 	playerDevices, err := spotify.ActiveSpotifyDevices(spotifyClient)
 
@@ -41,7 +41,7 @@ func ActiveDevicesHandler(w http.ResponseWriter, r *http.Request) {
 func StorePostHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := ctx.Value(constants.FieldUser).(*spotifyAPI.PrivateUser)
-	spotifyClient := ctx.Value(constants.FieldSpotifyClient).(*spotifyAPI.Client)
+	spotifyClient := ctx.Value(constants.FieldSpotifyClient).(spotify.SpotClient)
 	dao := ctx.Value(constants.FieldDao).(*persistence.PlayerStatesDAO)
 	slot, ok := ctx.Value(constants.FieldSlot).(int)
 	if !ok {
@@ -147,7 +147,7 @@ func StoreDeleteHandler(w http.ResponseWriter, r *http.Request) {
 func RestoreHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := ctx.Value(constants.FieldUser).(*spotifyAPI.PrivateUser)
-	spotifyClient := ctx.Value(constants.FieldSpotifyClient).(*spotifyAPI.Client)
+	spotifyClient := ctx.Value(constants.FieldSpotifyClient).(spotify.SpotClient)
 	dao := ctx.Value(constants.FieldDao).(*persistence.PlayerStatesDAO)
 	slot := ctx.Value(constants.FieldSlot).(int)
 

@@ -8,7 +8,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog/log"
 
-	constants "github.com/florianloch/cassette/internal"
+	"github.com/florianloch/cassette/internal/constants"
 )
 
 // CreateConsentMiddleware returns a middleware ensuring that as long as an user cannot provide a valid
