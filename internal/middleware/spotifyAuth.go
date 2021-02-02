@@ -14,7 +14,6 @@ import (
 )
 
 func CreateSpotifyAuthMiddleware(
-	store *sessions.CookieStore,
 	auth *spotifyAPI.Authenticator,
 	redirectURL *url.URL) (func(http.Handler) http.Handler, http.HandlerFunc) {
 	spotAuthMiddleware := func(next http.Handler) http.Handler {

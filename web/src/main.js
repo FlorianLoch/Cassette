@@ -27,7 +27,7 @@ Vue.component('b-button', BButton)
 
 NProgress.configure({ showSpinner: false });
 
-if (!API.isConsentCookieValid()) {
+if (!API.consentGiven()) {
   router.replace({name: "Consent"})
 }
 

@@ -8,7 +8,7 @@ clean:
 	rm cassette
 
 run: ./web/dist/ ./cassette
-	./cassette
+	CASSETTE_NETWORK_INTERFACE=localhost ./cassette
 
 test:
 	go test ./...

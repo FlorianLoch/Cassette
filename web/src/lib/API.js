@@ -55,17 +55,34 @@ const API = function (options) {
     return client.delete(URL_DATA)
   }
 
-  this.isConsentCookieValid = API.isConsentCookieValid
+  this.giveConsent = API.giveConsent
+
+  this.withdrawConsent = API.withdrawConsent
+
+  this.consentGiven = API.consentGiven
 
   this.URL_DATA = URL_DATA
 }
 
 API.install = function (Vue, options) {
-  Vue.prototype.$api = new API(options);
-};
+  Vue.prototype.$api = new API(options)
+}
 
-API.isConsentCookieValid = () => {
-  return document.cookie.split(";").some(it => it.trim().startsWith(CONSENT_COOKIE_NAME + "="))
+API.giveConsent = () => {
+  const now = Math.floor(Date.now() / 1000)
+  const maxAge = 10 * 60 * 60 * 24 * 365 // 10 years
+
+  document.cookie = `${CONSENT_COOKIE_NAME}=${now};max-age=${maxAge}`
+}
+
+API.withdrawConsent = () => {
+  document.cookie = `${CONSENT_COOKIE_NAME}="consent withdrawn"`
+}
+
+API.consentGiven = () => {
+  return document.cookie.split(";").some(it => {
+    return it.trim().startsWith(CONSENT_COOKIE_NAME + "=") && it.indexOf("withdrawn") < 0
+  })
 }
 
 export default API

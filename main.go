@@ -71,6 +71,9 @@ func main() {
 	}
 
 	store = sessions.NewCookieStore(secret32Bytes)
+	store.Options.HttpOnly = true
+	store.Options.Secure = !isDevMode
+	store.Options.SameSite = http.SameSiteLaxMode
 
 	redirectURL, err = url.Parse(appURL)
 	if err != nil {
@@ -98,11 +101,13 @@ func main() {
 		csrf.RequestHeader(constants.CSRFHeaderName),
 		csrf.CookieName(constants.CSRFCookieName),
 		csrf.Secure(!isDevMode),
+		csrf.HttpOnly(true),
+		csrf.SameSite(csrf.SameSiteLaxMode),
 		csrf.MaxAge(60*60*24*365), // Cookie is valid for 1 year
 		csrf.ErrorHandler(csrfErrorHandler{}),
 	)
 
-	spotAuthMiddleware, spotOAuthCBHandler := middleware.CreateSpotifyAuthMiddleware(store, auth, redirectURL)
+	spotAuthMiddleware, spotOAuthCBHandler := middleware.CreateSpotifyAuthMiddleware(auth, redirectURL)
 
 	var cwd, _ = os.Getwd()
 	var staticAssetsPath = cwd + webStaticContentPath
@@ -127,9 +132,7 @@ func main() {
 	}))
 	r.Use(chiMiddleware.Recoverer)
 
-	r.Use(middleware.CreateConsentMiddleware(spaHandler))
 	r.Use(attachSession)
-	r.Use(spotAuthMiddleware)
 
 	r.Get(redirectURL.Path, spotOAuthCBHandler)
 
@@ -161,9 +164,16 @@ func main() {
 		})
 	})
 
+	// r.Use(middleware.CreateConsentMiddleware(spaHandler))
+	// r.Use(spotAuthMiddleware)
+
 	// Provide the webapp following the SPA pattern: all non-API routes not being able
 	// to be resolved within the assets directory will return the webapp entry point.
-	r.NotFound(spaHandler.ServeHTTP)
+	// We wrap the SPA handler up in the Spotify Authentication middleware, which itself is wrapped inside
+	// the consent middleware.
+	consentMiddleware := middleware.CreateConsentMiddleware(spaHandler)
+	chain := consentMiddleware(spotAuthMiddleware(spaHandler))
+	r.NotFound(chain.ServeHTTP)
 
 	var interfacePort = networkInterface + ":" + port
 	log.Info().Msgf("Webserver started on %s", interfacePort)
@@ -198,11 +208,13 @@ func attachUser(next http.Handler) http.Handler {
 
 			// Once per session-lifetime we have to get the user ID from the spotifyClient.
 			// We then cache it in the session.
-			spotifyClient := spotifyClientFromSession(session)
+			spotifyClient, err := spotifyClientFromSession(session)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusForbidden)
+				return
+			}
 
-			var err error
 			rawUser, err = spotifyClient.CurrentUser()
-
 			if err != nil {
 				log.Panic().Err(err).Msg("Could not fetch information on user from Spotify!")
 			}
@@ -229,7 +241,11 @@ func attachSpotifyClient(next http.Handler) http.Handler {
 		ctx := r.Context()
 		session := ctx.Value(constants.FieldSession).(*sessions.Session)
 
-		client := spotifyClientFromSession(session)
+		client, err := spotifyClientFromSession(session)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusForbidden)
+			return
+		}
 
 		newCtx := context.WithValue(ctx, constants.FieldSpotifyClient, client)
 
@@ -237,18 +253,20 @@ func attachSpotifyClient(next http.Handler) http.Handler {
 	})
 }
 
-func spotifyClientFromSession(session *sessions.Session) *spotifyAPI.Client {
+func spotifyClientFromSession(session *sessions.Session) (*spotifyAPI.Client, error) {
 	rawToken := session.Values["spotify-oauth-token"]
 
 	tok, ok := rawToken.(*oauth2.Token)
 	if !ok {
-		// This should never happen
-		log.Panic().Interface("rawToken", rawToken).Msg("Could not read Spotify token from session!")
+		// This happens in case a user requests the /api routes without being signed in via Spotify
+		err := errors.New("Could not read Spotify token from session. User probably did not log in.")
+		log.Error().Err(err).Msg("")
+		return nil, err
 	}
 
 	client := auth.NewClient(tok)
 
-	return &client
+	return &client, nil
 }
 
 func attachDAO(next http.Handler) http.Handler {
