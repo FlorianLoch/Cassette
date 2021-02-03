@@ -36,7 +36,7 @@ var (
 	store *sessions.CookieStore
 	dao   persistence.PlayerStatesPersistor
 	// createSpotClient is required to use different initilisation code for testing
-	// for production environment
+	// and for production environment
 	createSpotClient spotClientCreator
 	isDevMode        bool
 )
@@ -45,6 +45,7 @@ type spotClientCreator func(token *oauth2.Token) spotify.SpotClient
 type m map[string]interface{}
 
 func RunInProduction() {
+	// TODO: Use hlog instead of log to have access to the right context, i.e. the requestID
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout})
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 
@@ -200,12 +201,12 @@ func setupAPI(webRoot string) http.Handler {
 		r.With(attachSpotifyClient).Get("/activeDevices", handler.ActiveDevicesHandler)
 
 		r.With(attachSpotifyClient).With(attachDAO).With(attachUser).Route("/playerStates", func(r chi.Router) {
-			r.Post("/", handler.StorePostHandler)
-			r.Get("/", handler.StoreGetHandler)
+			r.Post("/", handler.PlayerStatesPostHandler)
+			r.Get("/", handler.PlayerStatesGetHandler)
 			r.With(attachSlot).Route("/{slot}", func(r chi.Router) {
-				r.Put("/", handler.StorePostHandler)
-				r.Delete("/", handler.StoreDeleteHandler)
-				r.Post("/restore", handler.RestoreHandler)
+				r.Put("/", handler.PlayerStatesPostHandler)
+				r.Delete("/", handler.PlayerStatesDeleteHandler)
+				r.Post("/restore", handler.PlayerStatesRestoreHandler)
 			})
 		})
 	})
@@ -306,7 +307,6 @@ func spotifyClientFromSession(session *sessions.Session) (spotify.SpotClient, er
 		return nil, err
 	}
 
-	// If auth is the mock implementation we also want to create a mock client
 	return createSpotClient(tok), nil
 }
 

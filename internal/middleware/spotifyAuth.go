@@ -53,16 +53,16 @@ func CreateSpotifyAuthMiddleware(auth spotify.SpotAuthenticator) (func(http.Hand
 
 		randomState := randomStateFromSession(session)
 
+		if state := r.FormValue("state"); state != randomState {
+			http.Error(w, "State mismatch in OAuth callback", http.StatusBadRequest)
+			log.Error().Str("stateGiven", state).Str("stateExpected", randomState).Msg("State mismatch in OAuth callback.")
+			return
+		}
+
 		token, err := auth.Token(randomState, r)
 		if err != nil {
 			http.Error(w, "Could not get auth token for Spotify", http.StatusForbidden)
 			log.Error().Err(err).Msg("Could not get auth token for Spotify.")
-			return
-		}
-
-		if state := r.FormValue("state"); state != randomState {
-			http.NotFound(w, r)
-			log.Error().Str("stateGiven", state).Str("stateExpected", randomState).Msg("State mismatch in OAuth callback.")
 			return
 		}
 

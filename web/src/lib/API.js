@@ -70,7 +70,7 @@ API.install = function (Vue, options) {
 
 API.giveConsent = () => {
   const now = Math.floor(Date.now() / 1000)
-  const maxAge = 10 * 60 * 60 * 24 * 365 // 10 years
+  const maxAge = 10 * 60 * 60 * 24 * 365 // 10 years, keep this in sync with consent middleware in the backend
 
   document.cookie = `${CONSENT_COOKIE_NAME}=${now};max-age=${maxAge}`
 }

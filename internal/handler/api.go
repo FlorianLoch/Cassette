@@ -38,7 +38,7 @@ func ActiveDevicesHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(json)
 }
 
-func StorePostHandler(w http.ResponseWriter, r *http.Request) {
+func PlayerStatesPostHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := ctx.Value(constants.FieldUser).(*spotifyAPI.PrivateUser)
 	spotifyClient := ctx.Value(constants.FieldSpotifyClient).(spotify.SpotClient)
@@ -48,7 +48,7 @@ func StorePostHandler(w http.ResponseWriter, r *http.Request) {
 		slot = -1
 	}
 
-	var currentState, err = spotify.CurrentPlayerState(spotifyClient)
+	currentState, err := spotify.CurrentPlayerState(spotifyClient)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get current state of player.")
 		http.Error(w, "Could not retrieve player state from Spotify. Please make sure your device is playing and online.", http.StatusInternalServerError)
@@ -91,12 +91,12 @@ func StorePostHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 }
 
-func StoreGetHandler(w http.ResponseWriter, r *http.Request) {
+func PlayerStatesGetHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := ctx.Value(constants.FieldUser).(*spotifyAPI.PrivateUser)
 	dao := ctx.Value(constants.FieldDao).(persistence.PlayerStatesPersistor)
 
-	var playerStates, err = dao.LoadPlayerStates(user.ID)
+	playerStates, err := dao.LoadPlayerStates(user.ID)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed loading player states from DB.")
 		http.Error(w, "Could not retrieve player states from DB.", http.StatusInternalServerError)
@@ -115,7 +115,7 @@ func StoreGetHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(json)
 }
 
-func StoreDeleteHandler(w http.ResponseWriter, r *http.Request) {
+func PlayerStatesDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	// TODO: Add a note that it is ensure that all values are set when these handlers are called?
 	ctx := r.Context()
 	user := ctx.Value(constants.FieldUser).(*spotifyAPI.PrivateUser)
@@ -144,14 +144,14 @@ func StoreDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func RestoreHandler(w http.ResponseWriter, r *http.Request) {
+func PlayerStatesRestoreHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := ctx.Value(constants.FieldUser).(*spotifyAPI.PrivateUser)
 	spotifyClient := ctx.Value(constants.FieldSpotifyClient).(spotify.SpotClient)
 	dao := ctx.Value(constants.FieldDao).(persistence.PlayerStatesPersistor)
 	slot := ctx.Value(constants.FieldSlot).(int)
 
-	var deviceID = r.URL.Query().Get("deviceID")
+	deviceID := r.URL.Query().Get("deviceID")
 	playerStates, err := dao.LoadPlayerStates(user.ID)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed loading player states from DB.")
@@ -160,23 +160,23 @@ func RestoreHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if slot >= len(playerStates) {
-		log.Debug().Int("slot", slot).Interface("playerStates", playerStates).Msg("Unable to delete player state - slot out of range.")
-		http.Error(w, "'slot' is not in the range of existing slots.", http.StatusInternalServerError)
+		log.Debug().Int("slot", slot).Interface("playerStates", playerStates).Msg("Unable to delete player state. Slot out of range.")
+		http.Error(w, "'slot' is not in the range of existing slots.", http.StatusBadRequest)
 		return
 	}
 
 	err = spotify.PausePlayer(spotifyClient)
 	if err != nil {
-		// No serious error, we do not need to tell the client
+		// No serious error, we do not need to tell the client, he might notice anyway
 		log.Debug().Err(err).Msg("Could not pause player.")
 	}
 
-	var stateToRestore = playerStates[slot]
+	stateToRestore := playerStates[slot]
 
 	err = spotify.RestorePlayerState(spotifyClient, stateToRestore, deviceID)
 	if err != nil {
 		log.Debug().Err(err).Int("slot", slot).Str("deviceID", deviceID).Interface("stateToRestore", stateToRestore).Msg("Could not restore player state.")
-		http.Error(w, "Could not restore player state. Please check whether the given slot is valid and that there is at least one active device.", http.StatusBadRequest)
+		http.Error(w, "Could not restore player state. Please check that there is at least one active device.", http.StatusBadRequest)
 	}
 }
 
