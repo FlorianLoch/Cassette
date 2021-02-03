@@ -11,7 +11,7 @@
 
     p In more detail: You will be forwarded to Spotify's login service and will be asked whether to grant Cassette access to your profile (this is mandatory, we need to access the player state). Spotify will then issue a token to Cassette enabling it to access your player state. As this token is confidential it will only be processed on our systems, it will not be stored there but only inside an encrypted cookie within your browser. We have no access to your accounts password etc., this token can only be used to perform the actions you granted us when being asked by Spotify. Your player states are stored in a hosted database with your user name (also refered to as ID) being anonymised. As this data is your data with need you to accept us handling it as described on this page. We do not analyze your taste in music nor trace your behavior, we solely need it to request your current player state from spotify, to link it with you in our database and to restore them later. In case of questions please read on. Also feel free to ask or to consult the source code of this application (see link at the bottom).
 
-    p Your session data &ndash; mainly the token issued to us by Spotify on your behalf granting us access to your player states and user id &ndash; is not persisted on the server. It is stored in an encrypted cookie living inside your browser. The name of this cookie is "cassette_session". In order to not display you this consent page everytime we store your decision in "cassette_consent" (only in case you give consent). Additionally there is a cookie named "cassette_csrf_cookie" being required for technical reasons (i.e. to prevent CSRF attacks).
+    p Your session data &ndash; mainly the token issued to us by Spotify on your behalf granting us access to your player states and user id &ndash; is not persisted on the server. It is stored in an encrypted cookie living inside your browser. The name of this cookie is "cassette_session". In order to not display you this consent page everytime we store your decision in "cassette_consent" (only in case you give consent). Additionally there is a cookie named "cassette_csrf" being required for technical reasons (i.e. to prevent CSRF attacks).
     p In order to provide this service Cassette uses some third-party service providers:
     ul
       li Netcup: The application is running on a server hosted by Netcup. It is a German company oblidged to German data privacy laws.
@@ -48,7 +48,7 @@ export default {
       }).then(() => {
         this.$api.withdrawConsent()
 
-        this.$bvModal.msgBoxOk("Your data has successfully been removed from the database! Due to technical reasons we can not enforce deletion of the data we stored in your browser. Please delete these cookies ('cassette_session' and 'cassette_csrf_cookie') manually resp. using your browser's tools.")
+        this.$bvModal.msgBoxOk("Your data has successfully been removed from the database! Due to technical reasons we can not enforce deletion of the data we stored in your browser. Please delete these cookies ('cassette_session' and 'cassette_csrf') manually resp. using your browser's tools.")
       }, (err) => {
         this.$bvModal.msgBoxOk("An error occurred. Did you already authorize Cassette via Spotify and actually save a state?")
 

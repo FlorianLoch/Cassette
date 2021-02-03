@@ -11,7 +11,24 @@ run: ./web/dist/ ./cassette
 	CASSETTE_NETWORK_INTERFACE=localhost ./cassette
 
 test:
+ifeq (, $(shell which richgo))
 	go test ./...
+else
+	richgo test ./...
+endif
+
+generate-mocks:
+ifeq (, $(shell which mockgen))
+	$(error "'mockgen' not found, consider installing it via 'go get github.com/golang/mock/mockgen'.")
+endif
+	mockgen \
+		-source ./internal/spotify/abstractionLayer.go \
+		-destination ./internal/e2e_test/mocks/spotifyMocks.go \
+		-package "mocks"
+	mockgen \
+		-source ./internal/persistence/persistence.go \
+		-destination ./internal/e2e_test/mocks/persistenceMocks.go \
+		-package "mocks"
 
 build-web: ./web/dist/
 

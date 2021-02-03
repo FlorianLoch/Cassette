@@ -19,6 +19,7 @@ func CreateConsentMiddleware(spaHandler http.Handler) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if !consentGiven(r) {
+				w.Header().Add(constants.ConsentNoticeHeaderName, "ATTENTION: consent not given yet.")
 				spaHandler.ServeHTTP(w, r)
 
 				return

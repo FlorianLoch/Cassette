@@ -3,8 +3,9 @@ package constants
 const (
 	SessionCookieName       = "cassette_session"
 	CSRFHeaderName          = "X-Cassette-CSRF"
-	CSRFCookieName          = "cassette_csrf_cookie"
+	CSRFCookieName          = "cassette_csrf"
 	ConsentCookieName       = "cassette_consent"
+	ConsentNoticeHeaderName = "X-Cassette-Consent-Notice"
 	DefaultNetworkInterface = "localhost"
 	DefaultPort             = "8080"
 	JumpBackNSeconds        = 10
