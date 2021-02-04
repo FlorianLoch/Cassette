@@ -3,9 +3,10 @@ package util
 import (
 	"crypto/rand"
 	"crypto/sha256"
-	"log"
 	"os"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 )
 
 func Make32ByteSecret(input string) ([]byte, error) {
@@ -28,7 +29,7 @@ func Env(envName, defaultValue string) string {
 	var val, exists = os.LookupEnv(envName)
 
 	if !exists {
-		log.Printf("WARNING: '%s' is not set. Using default value ('%s').", envName, defaultValue)
+		log.Warn().Msgf("WARNING: '%s' is not set. Using default value ('%s').", envName, defaultValue)
 		return defaultValue
 	}
 

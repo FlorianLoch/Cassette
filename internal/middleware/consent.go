@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog/hlog"
 
 	"github.com/florianloch/cassette/internal/constants"
 )
@@ -39,20 +39,20 @@ func CreateConsentMiddleware(spaHandler http.Handler) mux.MiddlewareFunc {
 func consentGiven(r *http.Request) (*http.Cookie, bool) {
 	var cookie, err = r.Cookie(constants.ConsentCookieName)
 	if err == http.ErrNoCookie {
-		log.Debug().Msg("User did not yet give her/his consent. Serving the consent page.")
+		hlog.FromRequest(r).Debug().Msg("User did not yet give her/his consent. Serving the consent page.")
 
 		return nil, false
 	}
 
 	ts, err := strconv.ParseInt(cookie.Value, 10, 64)
 	if err != nil {
-		log.Debug().Msg("Consent cookie does not contain valid timestamp. Serving the consent page.")
+		hlog.FromRequest(r).Debug().Msg("Consent cookie does not contain valid timestamp. Serving the consent page.")
 
 		return nil, false
 	}
 
 	var date = time.Unix(ts, 0).UTC()
-	log.Debug().Msgf("User already gave her/his consent at '%s'.", date)
+	hlog.FromRequest(r).Debug().Msgf("User already gave her/his consent at '%s'.", date)
 
 	return cookie, true
 }

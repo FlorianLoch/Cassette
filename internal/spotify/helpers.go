@@ -11,6 +11,7 @@ func LinkToContext(playbackContextURI string) string {
 	splits := strings.Split(playbackContextURI, ":")
 
 	if len(splits) != 3 {
+		// Kind of an assert, this should not happen
 		log.Error().Str("playbackContextURI", playbackContextURI).Interface("splits", splits).Msg("Splitting context URI did not result in 3 parts.")
 
 		return ""

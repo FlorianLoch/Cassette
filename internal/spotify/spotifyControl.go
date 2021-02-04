@@ -2,12 +2,12 @@ package spotify
 
 import (
 	"errors"
-	"log"
+
+	"github.com/rs/zerolog/log"
+	spotifyAPI "github.com/zmb3/spotify"
 
 	"github.com/florianloch/cassette/internal/constants"
 	"github.com/florianloch/cassette/internal/persistence"
-
-	spotifyAPI "github.com/zmb3/spotify"
 )
 
 func isContextResumable(playbackContext spotifyAPI.PlaybackContext) bool {
@@ -19,7 +19,6 @@ func isContextResumable(playbackContext spotifyAPI.PlaybackContext) bool {
 func CurrentPlayerState(client SpotClient) (*persistence.PlayerState, error) {
 	currentlyPlaying, err := client.PlayerCurrentlyPlaying()
 	if err != nil {
-		log.Println("Could not read whats currently playing!", err)
 		return nil, errors.New("could not read whats currently playing")
 	}
 
@@ -33,7 +32,8 @@ func CurrentPlayerState(client SpotClient) (*persistence.PlayerState, error) {
 	if err == nil {
 		shuffleActivated = playerState.ShuffleState
 	} else {
-		log.Println("Could not read the current player state, we assume shuffle is deactivated therefore.")
+		// Kind of an assert, should not happen. In case it does it's not too important though
+		log.Error().Msg("Could not read the current player state.")
 	}
 
 	return playerStateFromCurrentlyPlaying(currentlyPlaying, shuffleActivated), nil

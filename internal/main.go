@@ -45,7 +45,6 @@ type spotClientCreator func(token *oauth2.Token) spotify.SpotClient
 type m map[string]interface{}
 
 func RunInProduction() {
-	// TODO: Use hlog instead of log to have access to the right context, i.e. the requestID
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout})
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 
@@ -233,7 +232,7 @@ func attachSession(next http.Handler) http.Handler {
 		if err != nil {
 			// This should not never happen except some client tampers with his session.
 			// But then in should fail in the spotifyAuth middleware already...
-			log.Panic().Err(err).Msg("Could not access session storage!")
+			hlog.FromRequest(r).Panic().Err(err).Msg("Could not access session storage!")
 		}
 
 		newCtx := context.WithValue(r.Context(), constants.FieldSession, session)
@@ -249,7 +248,7 @@ func attachUser(next http.Handler) http.Handler {
 
 		rawUser, exists := session.Values["user"]
 		if !exists {
-			log.Debug().Msg("'user' not yet set in session. Going to do this.")
+			hlog.FromRequest(r).Debug().Msg("'user' not yet set in session. Going to do this.")
 
 			// Once per session-lifetime we have to get the user ID from the spotifyClient.
 			// We then cache it in the session.
@@ -261,7 +260,7 @@ func attachUser(next http.Handler) http.Handler {
 
 			rawUser, err = spotifyClient.CurrentUser()
 			if err != nil {
-				log.Panic().Err(err).Msg("Could not fetch information on user from Spotify!")
+				hlog.FromRequest(r).Panic().Err(err).Msg("Could not fetch information on user from Spotify!")
 			}
 
 			session.Values["user"] = rawUser
@@ -272,7 +271,7 @@ func attachUser(next http.Handler) http.Handler {
 		user, ok := rawUser.(*spotifyAPI.PrivateUser)
 		if !ok {
 			// This should never happen
-			log.Panic().Msg("Could not read current user from session!")
+			hlog.FromRequest(r).Panic().Msg("Could not read current user from session!")
 		}
 
 		newCtx := context.WithValue(ctx, constants.FieldUser, user)
@@ -289,6 +288,7 @@ func attachSpotifyClient(next http.Handler) http.Handler {
 		client, err := spotifyClientFromSession(session)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusForbidden)
+			hlog.FromRequest(r).Error().Err(err).Msg("")
 			return
 		}
 
@@ -304,9 +304,7 @@ func spotifyClientFromSession(session *sessions.Session) (spotify.SpotClient, er
 	tok, ok := rawToken.(*oauth2.Token)
 	if !ok {
 		// This happens in case a user requests the /api routes without being signed in via Spotify
-		err := errors.New("Could not read Spotify token from session. User probably did not log in.")
-		log.Error().Err(err).Msg("")
-		return nil, err
+		return nil, errors.New("Could not read Spotify token from session. User probably did not log in.")
 	}
 
 	return createSpotClient(tok), nil
@@ -324,7 +322,7 @@ func attachSlot(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		slot, err := checkSlotParameter(r)
 		if err != nil {
-			log.Debug().Err(err).Msg("Could not retrieve slot from request.")
+			hlog.FromRequest(r).Debug().Err(err).Msg("Could not retrieve slot from request.")
 			http.Error(w, fmt.Sprintf("Could not process request. Please make sure the given slot is valid: %s", err), http.StatusBadRequest)
 			return
 		}
@@ -357,7 +355,7 @@ func debugLogger(nxt http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token := r.Header.Get(constants.CSRFHeaderName)
 
-		log.Debug().Str("csrfToken", token).Stringer("url", r.URL).Interface("cookies", r.Cookies()).Msg("")
+		hlog.FromRequest(r).Debug().Str("csrfToken", token).Stringer("url", r.URL).Interface("cookies", r.Cookies()).Msg("")
 
 		nxt.ServeHTTP(w, r)
 	})

@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog/hlog"
 )
 
 // NOTICE:
@@ -57,7 +57,7 @@ func (h *spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	stat, err := os.Lstat(path)
 	if os.IsNotExist(err) || (err == nil && !stat.Mode().IsRegular()) {
 		// file does not exist, serve index page
-		log.Debug().Str("indexPath", h.indexPath).Msg("Trying to serve default page.")
+		hlog.FromRequest(r).Debug().Str("indexPath", h.indexPath).Msg("Trying to serve default page.")
 
 		http.ServeFile(w, r, h.indexPath)
 		return
@@ -68,7 +68,7 @@ func (h *spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Debug().Msgf("Trying to serve: '%s'", path)
+	hlog.FromRequest(r).Debug().Msgf("Trying to serve: '%s'", path)
 
 	// otherwise, use http.FileServer to serve the static dir
 	h.fileServer.ServeHTTP(w, r)

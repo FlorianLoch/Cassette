@@ -5,11 +5,12 @@ import (
 	"net/http"
 
 	"github.com/gorilla/sessions"
+	"github.com/rs/zerolog/hlog"
+	"github.com/rs/zerolog/log"
 
 	"github.com/florianloch/cassette/internal/constants"
 	"github.com/florianloch/cassette/internal/spotify"
 	"github.com/florianloch/cassette/internal/util"
-	"github.com/rs/zerolog/log"
 )
 
 func CreateSpotifyAuthMiddleware(auth spotify.SpotAuthenticator) (func(http.Handler) http.Handler, http.HandlerFunc) {
@@ -18,7 +19,7 @@ func CreateSpotifyAuthMiddleware(auth spotify.SpotAuthenticator) (func(http.Hand
 			session := r.Context().Value(constants.FieldSession).(*sessions.Session)
 
 			if _, ok := session.Values["spotify-oauth-token"]; ok {
-				log.Debug().Msg("OAuth token already present. Nothing to do.")
+				hlog.FromRequest(r).Debug().Msg("OAuth token already present. Nothing to do.")
 
 				next.ServeHTTP(w, r)
 
@@ -31,14 +32,14 @@ func CreateSpotifyAuthMiddleware(auth spotify.SpotAuthenticator) (func(http.Hand
 				return
 			}
 
-			log.Debug().Msg("No OAuth token yet. Initializing OAuth flow...")
+			hlog.FromRequest(r).Debug().Msg("No OAuth token yet. Initializing OAuth flow...")
 
 			randomState := randomStateFromSession(session)
 
 			// No token yet and not the callback route, we have to redirect the client to Spotify's
 			// authentification service
 			redirectTo := auth.AuthURL(randomState)
-			log.Debug().Str("authURL", redirectTo).Msg("Redirecting to Spotify's auth service.")
+			hlog.FromRequest(r).Debug().Str("authURL", redirectTo).Msg("Redirecting to Spotify's auth service.")
 
 			// Store the currently requested route in order to be able to forward the user after successful
 			// OAuth flow
@@ -55,14 +56,14 @@ func CreateSpotifyAuthMiddleware(auth spotify.SpotAuthenticator) (func(http.Hand
 
 		if state := r.FormValue("state"); state != randomState {
 			http.Error(w, "State mismatch in OAuth callback", http.StatusBadRequest)
-			log.Error().Str("stateGiven", state).Str("stateExpected", randomState).Msg("State mismatch in OAuth callback.")
+			hlog.FromRequest(r).Error().Str("stateGiven", state).Str("stateExpected", randomState).Msg("State mismatch in OAuth callback.")
 			return
 		}
 
 		token, err := auth.Token(randomState, r)
 		if err != nil {
 			http.Error(w, "Could not get auth token for Spotify", http.StatusForbidden)
-			log.Error().Err(err).Msg("Could not get auth token for Spotify.")
+			hlog.FromRequest(r).Error().Err(err).Msg("Could not get auth token for Spotify.")
 			return
 		}
 
@@ -75,7 +76,7 @@ func CreateSpotifyAuthMiddleware(auth spotify.SpotAuthenticator) (func(http.Hand
 			// Client should really not be here... this happens when requesting this route straight away not being
 			// redirecting via Spotify. Or in case the session got lost with should not occur.
 			http.Error(w, "This route should not be requested directly.", http.StatusForbidden)
-			log.Error().Msg("Client requested the OAuth callback route directly.")
+			hlog.FromRequest(r).Error().Msg("Client requested the OAuth callback route directly.")
 			return
 		}
 
@@ -89,7 +90,7 @@ func randomStateFromSession(session *sessions.Session) string {
 	// This state is used during oauth negotiation in order to prevent CSRF
 	var randomState string
 	if _, ok := session.Values["oauth-random-state"]; !ok {
-		randomSecret, err := util.Make32ByteSecret("") // returns a random secret
+		randomSecret, err := util.Make32ByteSecret("") // Returns a random secret
 		if err != nil {
 			log.Panic().Err(err).Msg("Failed to generate a random secret for OAuth negotiation.")
 		}
