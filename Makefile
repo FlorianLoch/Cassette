@@ -30,12 +30,16 @@ endif
 		-destination ./internal/e2e_test/mocks/persistenceMocks.go \
 		-package "mocks"
 
-build-web: ./web/dist/
+build-web: ./web/dist/ ./web/node_modules
 
 # Check all files in web/ directory but IGNORE node_modules as this significantly slows down checking.
 # In case the content of web/node_modules changes a call to clean is therefore required.
-./web/dist/: $(shell find ./web -path ./web/node_modules -prune -false -o -path ./web/dist -prune -false -o -type f -name '*')
+# The dir './web/node_modules' is added in order to force Make to first run 'yarn install' before trying to build the web app
+./web/dist/: ./web/node_modules $(shell find ./web -path ./web/node_modules -prune -false -o -path ./web/dist -prune -false -o -type f -name '*')
 	yarn --cwd "./web" build
+
+./web/node_modules: ./web/package.json
+	yarn --cwd "./web" install
 
 ./cassette: $(shell find ./ -type f -name '*.go')
 	go build .

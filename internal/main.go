@@ -38,7 +38,6 @@ var (
 	// createSpotClient is required to use different initilisation code for testing
 	// and for production environment
 	createSpotClient spotClientCreator
-	isDevMode        bool
 )
 
 type spotClientCreator func(token *oauth2.Token) spotify.SpotClient
@@ -48,11 +47,7 @@ func RunInProduction() {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout})
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 
-	isDevMode = util.Env(constants.EnvENV, "") == "DEV"
-	if isDevMode {
-		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-		log.Debug().Msg("Running in DEV mode. Being more verbose. Set environment variable 'ENV' to 'DEV' to activate.")
-	}
+	isDevMode := util.Env(constants.EnvENV, "") == "DEV"
 
 	networkInterface := util.Env(constants.EnvNetworkInterface, constants.DefaultNetworkInterface)
 	// We also have to check for "PORT" as that is how Heroku/Dokku etc. tells the app where to listen
@@ -96,7 +91,7 @@ func RunInProduction() {
 	if err != nil {
 		log.Fatal().Err(err).Msg("Could not get current working directory.")
 	}
-	r := setupAPI(cwd)
+	r := setupAPI(cwd, isDevMode)
 
 	interfacePort := networkInterface + ":" + port
 	log.Info().Msgf("Webserver started on %s", interfacePort)
@@ -113,22 +108,21 @@ func SetupForTest(
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout})
 	zerolog.SetGlobalLevel(zerolog.ErrorLevel)
 
-	isDevMode = util.Env(constants.EnvENV, "") == "DEV"
-	if isDevMode {
-		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-		log.Debug().Msg("Running in DEV mode. Being more verbose. Set environment variable 'ENV' to 'DEV' to activate.")
-	}
-
 	dao = daoMock
 
 	auth = authMock
 
 	createSpotClient = spotClientMockCreator
 
-	return setupAPI(webRoot)
+	return setupAPI(webRoot, true)
 }
 
-func setupAPI(webRoot string) http.Handler {
+func setupAPI(webRoot string, isDevMode bool) http.Handler {
+	if isDevMode {
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+		log.Debug().Msg("Running in DEV mode. Being more verbose. Set environment variable 'ENV' to 'DEV' to activate.")
+	}
+
 	gob.Register(&spotifyAPI.PrivateUser{})
 	gob.Register(&oauth2.Token{})
 	gob.Register(&m{})

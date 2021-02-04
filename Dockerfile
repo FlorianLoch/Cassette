@@ -1,6 +1,7 @@
-FROM golang AS gobuilder
+# Version of golang image should be the same as used in Github CI
+FROM golang:1.15.7-alpine AS gobuilder
 WORKDIR /src/github.com/florianloch/cassette
-# We run the next three lines before copying the workspace in order to avoid having go download all modules everytime somethings changes
+# We run the next three lines before copying the workspace in order to avoid having Go download all modules everytime somethings changes
 COPY go.mod .
 COPY go.sum .
 RUN go mod download

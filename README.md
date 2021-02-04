@@ -1,3 +1,5 @@
+![build and test](https://github.com/FlorianLoch/Cassette/workflows/build%20and%20test%20cassette/badge.svg)
+
 # Cassette
 
 ![](./cassette_logo.svg)

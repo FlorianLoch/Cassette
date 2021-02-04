@@ -1,0 +1,24 @@
+name: build and test
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Install yarn
+      uses: actions/setup-node@v1
+
+    - name: Install dependencies and build web app
+      run: make build-web
+
+    - name: Install golang
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.15.7 # Same version as set in Dockerfile
+
+    - name: Run tests
+      run: make test
