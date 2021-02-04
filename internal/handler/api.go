@@ -34,7 +34,7 @@ func ActiveDevicesHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Could not fetch list of active devices from Spotify!", http.StatusInternalServerError)
 	}
 
-	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
 	w.Write(json)
 }
 

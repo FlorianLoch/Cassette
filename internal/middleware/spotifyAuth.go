@@ -67,6 +67,7 @@ func CreateSpotifyAuthMiddleware(auth spotify.SpotAuthenticator) (func(http.Hand
 		}
 
 		session.Values["spotify-oauth-token"] = token
+		session.Save(r, w)
 
 		// Redirect to the route initially requested
 		initiallyRequestedRoute, ok := session.Values["initially-requested-route"]
@@ -77,8 +78,6 @@ func CreateSpotifyAuthMiddleware(auth spotify.SpotAuthenticator) (func(http.Hand
 			log.Error().Msg("Client requested the OAuth callback route directly.")
 			return
 		}
-
-		session.Save(r, w)
 
 		http.Redirect(w, r, initiallyRequestedRoute.(string), http.StatusTemporaryRedirect)
 	}

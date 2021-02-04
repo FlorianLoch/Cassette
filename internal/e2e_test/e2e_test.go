@@ -11,6 +11,7 @@ import (
 
 	"github.com/gavv/httpexpect/v2"
 	"github.com/golang/mock/gomock"
+	spotifyAPI "github.com/zmb3/spotify"
 	"golang.org/x/oauth2"
 
 	main "github.com/florianloch/cassette/internal"
@@ -28,7 +29,31 @@ const (
 
 var (
 	dummyOAuthToken = &oauth2.Token{}
+	dummyUser       = &spotifyAPI.PrivateUser{
+		User: spotifyAPI.User{
+			ID: dummyUserID,
+		},
+	}
+	dummyDevices = []spotifyAPI.PlayerDevice{{
+		ID:   "001",
+		Name: "Device 1",
+	}, {
+		ID:     "002",
+		Name:   "Device 2",
+		Active: true,
+	}}
 )
+
+func TestAPIHasOwn404Route(t *testing.T) {
+	// Routes not hanging below the "/api" node are handled by the SPA middleware
+	e, _, _, _, _ := beforeEach(t)
+
+	r := e.GET("/api/activeDevices").Expect()
+	r.Status(http.StatusForbidden)
+
+	r = e.GET("/api/currentDevices").Expect()
+	r.Status(http.StatusNotFound)
+}
 
 func TestConsentCheck(t *testing.T) {
 	e, ctrl, _, authMock, _ := beforeEach(t)
@@ -49,7 +74,7 @@ func TestConsentCheck(t *testing.T) {
 	r.Header(constants.ConsentNoticeHeaderName).Equal("ATTENTION: consent not given yet.")
 	r.Body().Contains(snippedFromIndexPage)
 
-	// No try again with a valid cookie and we should get forwarded to Spotify's auth service
+	// Now try again with a valid cookie and we should get forwarded to Spotify's auth service
 	cookieVal := validConsentCookieValue()
 	r = e.GET("/").WithCookie(constants.ConsentCookieName, cookieVal).Expect()
 	r.Status(http.StatusTemporaryRedirect)
@@ -65,17 +90,40 @@ func TestRetrievalOfPlayerStates(t *testing.T) {
 
 	login(t, e, authMock)
 
-	daoMock.EXPECT().LoadPlayerStates(dummyUserID).Times(0).
+	daoMock.EXPECT().LoadPlayerStates(dummyUserID).Times(1).
 		Return([]*persistence.PlayerState{dummyPlayerState("book 1"), dummyPlayerState("book 2")}, nil)
 
 	// currentUser gets stored in the session so should only be called once in the scope of a test
-	clientMock.EXPECT().CurrentUser().Times(0)
+	clientMock.EXPECT().CurrentUser().Times(1).Return(dummyUser, nil)
 
-	// TODO: Continue this!
+	r := e.GET("/api/playerStates").Expect()
+	r.Status(http.StatusOK)
+	r.ContentType("application/json")
+	a := r.JSON().Array()
+	a.Length().Equal(2)
+	a.Element(0).Object().Value("albumName").String().Equal("book 1")
+	a.Element(1).Object().Value("albumName").String().Equal("book 2")
 }
 
 func TestRetrievalOfActiveDevices(t *testing.T) {
-	// TODO: implement!
+	e, ctrl, _, authMock, clientMock := beforeEach(t)
+	defer ctrl.Finish()
+
+	login(t, e, authMock)
+
+	clientMock.EXPECT().PlayerDevices().Times(1).Return(dummyDevices, nil)
+
+	r := e.GET("/api/activeDevices").Expect()
+	r.Status(http.StatusOK)
+	r.ContentType("application/json")
+	a := r.JSON().Array()
+	a.Length().Equal(2)
+	o1 := a.Element(0).Object()
+	o1.Value("name").String().Equal("Device 1")
+	o1.Value("active").Boolean().False()
+	o2 := a.Element(1).Object()
+	o2.Value("name").String().Equal("Device 2")
+	o2.Value("active").Boolean().True()
 }
 
 func TestSavePlayerState(t *testing.T) {

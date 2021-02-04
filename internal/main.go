@@ -209,6 +209,8 @@ func setupAPI(webRoot string) http.Handler {
 				r.Post("/restore", handler.PlayerStatesRestoreHandler)
 			})
 		})
+
+		r.NotFound(http.NotFound)
 	})
 
 	// r.Use(middleware.CreateConsentMiddleware(spaHandler))
