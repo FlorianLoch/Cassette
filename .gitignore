@@ -3,3 +3,4 @@ vendor/
 cassette
 **/.DS_Store
 .make/
+coverage.out

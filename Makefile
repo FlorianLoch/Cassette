@@ -1,6 +1,17 @@
 default: cassette
 
-.PHONY: clean run test build-web docker-build docker-run heroku-deploy-docker heroku-init dokku-deploy
+cassette_bin = ./cassette
+cov_profile = ./coverage.out
+node_modules =  ./web/node_modules
+web_dist = ./web/dist
+package_json = ./web/package.json
+all_go_files = $(shell find . -type f -name '*.go')
+# Files inside './web/node_modules' and './web/dist' are not taken into account. Changes in the first should go
+# along with changes in './web/package.json' which is considered.
+all_web_files = $(shell find ./web -path $(node_modules) -prune -false -o -path $(web_dist) -prune -false -o -type f -name '*')
+all_files = $(shell find . -path ./.make -prune -false -o -path $(node_modules) -prune -false -o -path $(web_dist) -prune -false -o -type f -name '*')
+
+.PHONY: clean run test build-web docker-build docker-run heroku-deploy-docker heroku-init dokku-deploy coverage show-coverage
 
 clean:
 	rm -rf web/dist
@@ -17,6 +28,17 @@ else
 	richgo test ./...
 endif
 
+coverage: ./coverage.out
+
+./coverage.out: $(all_go_files)
+	# This workaround of grepping together a list of packages which do not solely contain test code seems to
+	# be not necesarry with go 1.15.7 anymore...
+	# https://github.com/golang/go/issues/27333
+	go test ./... -coverpkg=$(shell go list ./... | grep -v test | tr "\n" ",") -coverprofile=$(cov_profile)
+
+show-coverage: $(cov_profile)
+	go tool cover -html=$(cov_profile)
+
 generate-mocks:
 ifeq (, $(shell which mockgen))
 	$(error "'mockgen' not found, consider installing it via 'go get github.com/golang/mock/mockgen'.")
@@ -30,23 +52,23 @@ endif
 		-destination ./internal/e2e_test/mocks/persistenceMocks.go \
 		-package "mocks"
 
-build-web: ./web/dist/ ./web/node_modules
+build-web: $(web_dist) $(node_modules)
 
 # Check all files in web/ directory but IGNORE node_modules as this significantly slows down checking.
 # In case the content of web/node_modules changes a call to clean is therefore required.
 # The dir './web/node_modules' is added in order to force Make to first run 'yarn install' before trying to build the web app
-./web/dist/: ./web/node_modules $(shell find ./web -path ./web/node_modules -prune -false -o -path ./web/dist -prune -false -o -type f -name '*')
+$(web_dist): $(node_modules) $(all_web_files)
 	yarn --cwd "./web" build
 
-./web/node_modules: ./web/package.json
+$(node_modules): $(package_json)
 	yarn --cwd "./web" install
 
-./cassette: $(shell find ./ -type f -name '*.go')
+$(cassette_bin): $(all_go_files)
 	go build .
 
 docker-build: .make/docker-build
 
-.make/docker-build: $(shell find . -path ./web/node_modules -prune -false -o -not -path '*/\.*' -type f -name '*')
+.make/docker-build: $(all_files)
 	docker build . -t fdloch/cassette
 	mkdir -p .make/ && touch .make/docker-build
 
