@@ -1,4 +1,5 @@
 ![build and test](https://github.com/FlorianLoch/Cassette/workflows/build%20and%20test%20cassette/badge.svg)
+[![Coverage Status](https://coveralls.io/repos/github/FlorianLoch/Cassette/badge.svg?branch=master)](https://coveralls.io/github/FlorianLoch/Cassette?branch=master)
 
 # Cassette
 

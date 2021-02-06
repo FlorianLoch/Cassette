@@ -20,5 +20,17 @@ jobs:
       with:
         go-version: 1.15.7 # Same version as set in Dockerfile
 
+    # - name: Run linters
+    #   uses: golangci/golangci-lint-action@v2
+
     - name: Run tests
-      run: make test
+      run: make coverage
+
+    - name: Prepare coverage report
+      uses: jandelgado/gcov2lcov-action@v1.0.5
+
+    - name: Send coverage report
+      uses: coverallsapp/github-action@v1.1.2
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        path-to-lcov: coverage.lcov
