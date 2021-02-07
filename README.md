@@ -19,7 +19,7 @@ Simply spoken by using the Spotify Web API. Cassette itself consists of two comp
 ## Current status of the project
 There has been a first version, basically a proof-of-concept for quite some time. I use it quite often and by the time I considered it quite useful and decided to rewrite the project in a more thorough fashion with the goal of making the tool available to everyone who wants to use it. Admittedly, this is also a play project for trying out stuff and a "finger exercise". ;)
 
-I am aware that, at its current state this project does not necessarily meets best standards in software development, e.g., there are no tests and some of the code is still in proof-of-concept state. But this will hopefully change in the near future.
+I am aware that, at its current state this project does not necessarily meet best standards in software development, e.g., there are not too many tests and some of the code is still in proof-of-concept state. But this is changing currently and hopefully will even more in the near future.
 
 ### Prototype
 Version 1 is currently deployed at Heroku (as a Docker container) and can be found at [spotistate.fdlo.ch](https://spotistate.fdlo.ch). Note that the prototype does not reflect the current state of this repository and still uses the old name, which could not be kept as it violates Spotify's branding guidelines.

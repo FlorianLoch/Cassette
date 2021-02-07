@@ -72,8 +72,6 @@ func RestorePlayerState(client SpotClient, stateToLoad *persistence.PlayerState,
 
 	spotifyPlayOptions.DeviceID = &id
 
-	client.PlayOpt(spotifyPlayOptions)
-
 	err = client.PlayOpt(spotifyPlayOptions)
 	if err != nil {
 		return err
@@ -112,7 +110,17 @@ func playerStateFromCurrentlyPlaying(currentlyPlaying *spotifyAPI.CurrentlyPlayi
 		}
 	}
 
-	return &persistence.PlayerState{string(currentlyPlaying.PlaybackContext.URI), string(item.URI), item.Name, item.Album.Name, item.Album.Images[0].URL, joinedArtists, currentlyPlaying.Progress, item.Duration, shuffleActivated}
+	return &persistence.PlayerState{
+		PlaybackContextURI: string(currentlyPlaying.PlaybackContext.URI),
+		PlaybackItemURI:    string(item.URI),
+		TrackName:          item.Name,
+		AlbumName:          item.Album.Name,
+		AlbumArtURL:        item.Album.Images[0].URL,
+		ArtistName:         joinedArtists,
+		Progress:           currentlyPlaying.Progress,
+		Duration:           item.Duration,
+		ShuffleActivated:   shuffleActivated,
+	}
 }
 
 type CondensedPlayerDevice struct {

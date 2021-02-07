@@ -6,7 +6,6 @@ import (
 
 	"github.com/gorilla/sessions"
 	"github.com/rs/zerolog/hlog"
-	"github.com/rs/zerolog/log"
 
 	"github.com/florianloch/cassette/internal/constants"
 	"github.com/florianloch/cassette/internal/spotify"
@@ -16,9 +15,9 @@ import (
 func CreateSpotifyAuthMiddleware(auth spotify.SpotAuthenticator) (func(http.Handler) http.Handler, http.HandlerFunc) {
 	spotAuthMiddleware := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			session := r.Context().Value(constants.FieldSession).(*sessions.Session)
+			session := r.Context().Value(constants.FieldKeySession).(*sessions.Session)
 
-			if _, ok := session.Values["spotify-oauth-token"]; ok {
+			if _, ok := session.Values[constants.SessionKeySpotifyToken]; ok {
 				hlog.FromRequest(r).Debug().Msg("OAuth token already present. Nothing to do.")
 
 				next.ServeHTTP(w, r)
@@ -34,7 +33,12 @@ func CreateSpotifyAuthMiddleware(auth spotify.SpotAuthenticator) (func(http.Hand
 
 			hlog.FromRequest(r).Debug().Msg("No OAuth token yet. Initializing OAuth flow...")
 
-			randomState := randomStateFromSession(session)
+			randomState, err := generateRandomState()
+			if err != nil {
+				hlog.FromRequest(r).Panic().Err(err).Msg("Failed to generate a random secret for OAuth negotiation.")
+				return
+			}
+			session.Values[constants.SessionKeyOAuthRandomState] = randomState
 
 			// No token yet and not the callback route, we have to redirect the client to Spotify's
 			// authentification service
@@ -43,40 +47,66 @@ func CreateSpotifyAuthMiddleware(auth spotify.SpotAuthenticator) (func(http.Hand
 
 			// Store the currently requested route in order to be able to forward the user after successful
 			// OAuth flow
-			session.Values["initially-requested-route"] = r.URL.Path
-			session.Save(r, w)
+			session.Values[constants.SessionKeyInitiallyRequestedRoute] = r.URL.Path
+			err = session.Save(r, w)
+			if err != nil {
+				// Should not happen, if it does randomState can also not be saved to session - therefore callback
+				// cannot be handled successfully. So fail early and let the user retry.
+				hlog.FromRequest(r).Panic().Err(err).Msg("Failed to save client's session.")
+				return
+			}
 
 			http.Redirect(w, r, redirectTo, http.StatusTemporaryRedirect)
 		})
 	}
 	spotOAuthCBHandler := func(w http.ResponseWriter, r *http.Request) {
-		session := r.Context().Value(constants.FieldSession).(*sessions.Session)
+		session := r.Context().Value(constants.FieldKeySession).(*sessions.Session)
 
-		randomState := randomStateFromSession(session)
+		rawRandomState, ok := session.Values[constants.SessionKeyOAuthRandomState]
+		if !ok {
+			// Might happen in case user requests the OAuth callback route after having
+			// successfully initialized the session already (because of pruning randomState
+			// from session after successful initialization)
+			hlog.FromRequest(r).Error().Msg("Failed to retrieve randomState from session.")
+			http.Error(w, "Session does not contain OAuth state", http.StatusBadRequest)
+			return
+		}
+		randomState := rawRandomState.(string)
 
 		if state := r.FormValue("state"); state != randomState {
+			hlog.FromRequest(r).Error().
+				Str("stateGiven", state).
+				Str("stateExpected", randomState).
+				Msg("State mismatch in OAuth callback.")
 			http.Error(w, "State mismatch in OAuth callback", http.StatusBadRequest)
-			hlog.FromRequest(r).Error().Str("stateGiven", state).Str("stateExpected", randomState).Msg("State mismatch in OAuth callback.")
 			return
 		}
 
 		token, err := auth.Token(randomState, r)
 		if err != nil {
-			http.Error(w, "Could not get auth token for Spotify", http.StatusForbidden)
 			hlog.FromRequest(r).Error().Err(err).Msg("Could not get auth token for Spotify.")
+			http.Error(w, "Could not get auth token for Spotify", http.StatusForbidden)
 			return
 		}
 
-		session.Values["spotify-oauth-token"] = token
-		session.Save(r, w)
-
 		// Redirect to the route initially requested
-		initiallyRequestedRoute, ok := session.Values["initially-requested-route"]
+		initiallyRequestedRoute, ok := session.Values[constants.SessionKeyInitiallyRequestedRoute]
 		if !ok {
-			// Client should really not be here... this happens when requesting this route straight away not being
-			// redirecting via Spotify. Or in case the session got lost with should not occur.
-			http.Error(w, "This route should not be requested directly.", http.StatusForbidden)
-			hlog.FromRequest(r).Error().Msg("Client requested the OAuth callback route directly.")
+			// This should never happen, except in the scenario described with randomState above - but then
+			// processing should already be stopped above.
+			hlog.FromRequest(r).Error().Msg("Could not get initiallyRequestedRoute from session. This should never happen.")
+			return
+		}
+
+		// Clean up the session, remove entries not needed any longer...
+		delete(session.Values, constants.SessionKeyInitiallyRequestedRoute)
+		delete(session.Values, constants.SessionKeyOAuthRandomState)
+
+		session.Values[constants.SessionKeySpotifyToken] = token
+		err = session.Save(r, w)
+		if err != nil {
+			hlog.FromRequest(r).Error().Err(err).Msg("Could not update user's session.")
+			http.Error(w, "Could not update user's session", http.StatusInternalServerError)
 			return
 		}
 
@@ -86,18 +116,12 @@ func CreateSpotifyAuthMiddleware(auth spotify.SpotAuthenticator) (func(http.Hand
 	return spotAuthMiddleware, spotOAuthCBHandler
 }
 
-func randomStateFromSession(session *sessions.Session) string {
-	// This state is used during oauth negotiation in order to prevent CSRF
-	var randomState string
-	if _, ok := session.Values["oauth-random-state"]; !ok {
-		randomSecret, err := util.Make32ByteSecret("") // Returns a random secret
-		if err != nil {
-			log.Panic().Err(err).Msg("Failed to generate a random secret for OAuth negotiation.")
-		}
-
-		session.Values["oauth-random-state"] = fmt.Sprintf("%x", randomSecret)
+func generateRandomState() (string, error) {
+	// This state is used during OAuth negotiation in order to prevent CSRF
+	randomSecret, err := util.Make32ByteSecret("") // Returns a random secret
+	if err != nil {
+		return "", err
 	}
-	randomState = (session.Values["oauth-random-state"]).(string)
 
-	return randomState
+	return fmt.Sprintf("%x", randomSecret), nil
 }

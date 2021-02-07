@@ -126,6 +126,7 @@ func setupAPI(webRoot string, isDevMode bool) http.Handler {
 	gob.Register(&spotifyAPI.PrivateUser{})
 	gob.Register(&oauth2.Token{})
 	gob.Register(&m{})
+	gob.Register(constants.SessionKeyUser) // could be any value, just needs to be of type session.sessionKey
 
 	secret32Bytes, err := util.Make32ByteSecret(util.Env(constants.EnvSecret, ""))
 	if err != nil {
@@ -227,9 +228,10 @@ func attachSession(next http.Handler) http.Handler {
 			// This should not never happen except some client tampers with his session.
 			// But then in should fail in the spotifyAuth middleware already...
 			hlog.FromRequest(r).Panic().Err(err).Msg("Could not access session storage!")
+			return
 		}
 
-		newCtx := context.WithValue(r.Context(), constants.FieldSession, session)
+		newCtx := context.WithValue(r.Context(), constants.FieldKeySession, session)
 
 		next.ServeHTTP(w, r.WithContext(newCtx))
 	})
@@ -238,37 +240,44 @@ func attachSession(next http.Handler) http.Handler {
 func attachUser(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		session := ctx.Value(constants.FieldSession).(*sessions.Session)
+		session := ctx.Value(constants.FieldKeySession).(*sessions.Session)
 
-		rawUser, exists := session.Values["user"]
+		rawUser, exists := session.Values[constants.SessionKeyUser]
 		if !exists {
-			hlog.FromRequest(r).Debug().Msg("'user' not yet set in session. Going to do this.")
+			hlog.FromRequest(r).Debug().Msg("'user' not yet set in session. Going to add it.")
 
 			// Once per session-lifetime we have to get the user ID from the spotifyClient.
 			// We then cache it in the session.
 			spotifyClient, err := spotifyClientFromSession(session)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusForbidden)
+				hlog.FromRequest(r).Panic().Err(err).Msg("Could not initialize Spotify client for user!")
 				return
 			}
 
 			rawUser, err = spotifyClient.CurrentUser()
 			if err != nil {
 				hlog.FromRequest(r).Panic().Err(err).Msg("Could not fetch information on user from Spotify!")
+				return
 			}
 
-			session.Values["user"] = rawUser
+			session.Values[constants.SessionKeyUser] = rawUser
 
-			session.Save(r, w)
+			err = session.Save(r, w)
+			if err != nil {
+				// This should not happen. We can continue processing the request, the next call to this function
+				// will try again to attach the user to the session.
+				hlog.FromRequest(r).Error().Err(err).Msg("Could not update user's session.")
+			}
 		}
 
 		user, ok := rawUser.(*spotifyAPI.PrivateUser)
 		if !ok {
 			// This should never happen
 			hlog.FromRequest(r).Panic().Msg("Could not read current user from session!")
+			return
 		}
 
-		newCtx := context.WithValue(ctx, constants.FieldUser, user)
+		newCtx := context.WithValue(ctx, constants.FieldKeyUser, user)
 
 		next.ServeHTTP(w, r.WithContext(newCtx))
 	})
@@ -277,7 +286,7 @@ func attachUser(next http.Handler) http.Handler {
 func attachSpotifyClient(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		session := ctx.Value(constants.FieldSession).(*sessions.Session)
+		session := ctx.Value(constants.FieldKeySession).(*sessions.Session)
 
 		client, err := spotifyClientFromSession(session)
 		if err != nil {
@@ -286,14 +295,14 @@ func attachSpotifyClient(next http.Handler) http.Handler {
 			return
 		}
 
-		newCtx := context.WithValue(ctx, constants.FieldSpotifyClient, client)
+		newCtx := context.WithValue(ctx, constants.FieldKeySpotifyClient, client)
 
 		next.ServeHTTP(w, r.WithContext(newCtx))
 	})
 }
 
 func spotifyClientFromSession(session *sessions.Session) (spotify.SpotClient, error) {
-	rawToken := session.Values["spotify-oauth-token"]
+	rawToken := session.Values[constants.SessionKeySpotifyToken]
 
 	tok, ok := rawToken.(*oauth2.Token)
 	if !ok {
@@ -306,7 +315,7 @@ func spotifyClientFromSession(session *sessions.Session) (spotify.SpotClient, er
 
 func attachDAO(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		newCtx := context.WithValue(r.Context(), constants.FieldDao, dao)
+		newCtx := context.WithValue(r.Context(), constants.FieldKeyDao, dao)
 
 		next.ServeHTTP(w, r.WithContext(newCtx))
 	})
@@ -321,7 +330,7 @@ func attachSlot(next http.Handler) http.Handler {
 			return
 		}
 
-		newCtx := context.WithValue(r.Context(), constants.FieldSlot, slot)
+		newCtx := context.WithValue(r.Context(), constants.FieldKeySlot, slot)
 
 		next.ServeHTTP(w, r.WithContext(newCtx))
 	})
@@ -345,15 +354,15 @@ func checkSlotParameter(r *http.Request) (int, error) {
 	return slot, nil
 }
 
-func debugLogger(nxt http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		token := r.Header.Get(constants.CSRFHeaderName)
+// func debugLogger(nxt http.Handler) http.Handler {
+// 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+// 		token := r.Header.Get(constants.CSRFHeaderName)
 
-		hlog.FromRequest(r).Debug().Str("csrfToken", token).Stringer("url", r.URL).Interface("cookies", r.Cookies()).Msg("")
+// 		hlog.FromRequest(r).Debug().Str("csrfToken", token).Stringer("url", r.URL).Interface("cookies", r.Cookies()).Msg("")
 
-		nxt.ServeHTTP(w, r)
-	})
-}
+// 		nxt.ServeHTTP(w, r)
+// 	})
+// }
 
 type csrfErrorHandler struct{}
 

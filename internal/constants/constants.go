@@ -12,7 +12,7 @@ const (
 	WebStaticContentPath    = "./web/dist"
 	OAuthCallbackRoute      = "/spotify-oauth-callback"
 
-	// names of envs
+	// Names of envs
 	EnvENV                 = "CASSETTE_ENV"
 	EnvNetworkInterface    = "CASSETTE_NETWORK_INTERFACE"
 	EnvPort                = "CASSETTE_PORT"
@@ -22,12 +22,19 @@ const (
 	EnvSpotifyClientID     = "CASSETTE_SPOTIFY_CLIENT_ID"
 	EnvSpotifyClientSecret = "CASSETTE_SPOTIFY_CLIENT_KEY"
 
-	// keys for context fields
-	FieldSession       = ctxKey("session")
-	FieldDao           = ctxKey("dao")
-	FieldSlot          = ctxKey("slot")
-	FieldUser          = ctxKey("user")
-	FieldSpotifyClient = ctxKey("spotifyClient")
+	// Keys for context fields
+	FieldKeySession       = ctxKey("session")
+	FieldKeyDao           = ctxKey("dao")
+	FieldKeySlot          = ctxKey("slot")
+	FieldKeyUser          = ctxKey("user")
+	FieldKeySpotifyClient = ctxKey("spotifyClient")
+
+	// Keys for session values, as these are stored in the session cookie use something small
+	SessionKeyUser                    = sessionKey(0)
+	SessionKeySpotifyToken            = sessionKey(1)
+	SessionKeyInitiallyRequestedRoute = sessionKey(2)
+	SessionKeyOAuthRandomState        = sessionKey(3)
 )
 
 type ctxKey string
+type sessionKey int
