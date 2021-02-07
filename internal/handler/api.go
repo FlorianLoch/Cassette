@@ -252,7 +252,7 @@ func enrichPlayerStates(playerStates []*persistence.PlayerState) []*enrichedPlay
 
 type enrichedPlayerState struct {
 	*persistence.PlayerState
-	LinkToContext string
+	LinkToContext string `json:"linkToContext"` // link to open context in Spotify
 }
 
 func respondWithJSON(w http.ResponseWriter, r *http.Request, json []byte) {

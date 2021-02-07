@@ -185,6 +185,7 @@ func setupAPI(webRoot string, isDevMode bool) http.Handler {
 
 		r.Head("/csrfToken", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set(constants.CSRFHeaderName, csrf.Token(r))
+			w.WriteHeader(http.StatusOK)
 		})
 
 		r.With(attachDAO).With(attachUser).Route("/you", func(r chi.Router) {
@@ -226,8 +227,8 @@ func attachSession(next http.Handler) http.Handler {
 		session, err := store.Get(r, constants.SessionCookieName)
 		if err != nil {
 			// This should not never happen except some client tampers with his session.
-			// But then in should fail in the spotifyAuth middleware already...
-			hlog.FromRequest(r).Panic().Err(err).Msg("Could not access session storage!")
+			hlog.FromRequest(r).Error().Err(err).Msg("Could not access session storage!")
+			http.Error(w, "Session is invalid. Please delete your session cookie and try again.", http.StatusBadRequest)
 			return
 		}
 
@@ -250,7 +251,8 @@ func attachUser(next http.Handler) http.Handler {
 			// We then cache it in the session.
 			spotifyClient, err := spotifyClientFromSession(session)
 			if err != nil {
-				hlog.FromRequest(r).Panic().Err(err).Msg("Could not initialize Spotify client for user!")
+				hlog.FromRequest(r).Error().Err(err).Msg("Could not initialize Spotify client for user!")
+				http.Error(w, err.Error(), http.StatusForbidden)
 				return
 			}
 
@@ -290,8 +292,8 @@ func attachSpotifyClient(next http.Handler) http.Handler {
 
 		client, err := spotifyClientFromSession(session)
 		if err != nil {
+			hlog.FromRequest(r).Error().Err(err).Msg("Could not initialize Spotify client for user!")
 			http.Error(w, err.Error(), http.StatusForbidden)
-			hlog.FromRequest(r).Error().Err(err).Msg("")
 			return
 		}
 

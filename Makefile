@@ -1,6 +1,6 @@
-default: cassette
+default: build-all
 
-.PHONY: clean run test build-web docker-build docker-run heroku-deploy-docker heroku-init dokku-deploy coverage show-coverage lint
+.PHONY: build-all clean run test build-web docker-build docker-run heroku-deploy-docker heroku-init dokku-deploy coverage show-coverage lint
 
 cassette_bin = ./cassette
 cov_profile = ./coverage.out
@@ -13,12 +13,14 @@ all_go_files = $(shell find . -type f -name '*.go')
 all_web_files = $(shell find ./web -path $(node_modules) -prune -false -o -path $(web_dist) -prune -false -o -type f -name '*')
 all_files = $(shell find . -path ./.make -prune -false -o -path $(node_modules) -prune -false -o -path $(web_dist) -prune -false -o -type f -name '*')
 
+build-all: $(web_dist) $(cassette_bin)
+
 clean:
 	rm -rf $(web_dist)
 	rm -rf .make
 	rm $(cassette_bin)
 
-run: $(web_dist) $(cassette_bin)
+run: build-all
 	CASSETTE_NETWORK_INTERFACE=localhost $(cassette_bin)
 
 lint: $(cassette_bin)
@@ -33,7 +35,7 @@ endif
 
 coverage: $(cov_profile)
 
-.$(cov_profile): $(all_go_files)
+$(cov_profile): $(all_go_files)
 	# This workaround of grepping together a list of packages which do not solely contain test code seems to
 	# be not necesarry with go 1.15.7 anymore...
 	# https://github.com/golang/go/issues/27333

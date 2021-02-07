@@ -33,7 +33,7 @@ func CurrentPlayerState(client SpotClient) (*persistence.PlayerState, error) {
 		shuffleActivated = playerState.ShuffleState
 	} else {
 		// Kind of an assert, should not happen. In case it does it's not too important though
-		log.Error().Msg("Could not read the current player state.")
+		log.Error().Err(err).Msg("Could not read the current player state, i.e. could not detect whether shuffle is activated or not.")
 	}
 
 	return playerStateFromCurrentlyPlaying(currentlyPlaying, shuffleActivated), nil
@@ -110,12 +110,30 @@ func playerStateFromCurrentlyPlaying(currentlyPlaying *spotifyAPI.CurrentlyPlayi
 		}
 	}
 
+	// Ensure there are two URLs in the Images slice
+	images := item.Album.Images
+	if len(images) == 0 {
+		// Kind of an assert, should not happen. In case it does it's not too important though
+		log.Error().Interface("item", item).Msg("No image URL provided for currently playing item.")
+
+		item.Album.Images = append(images, spotifyAPI.Image{
+			URL: "",
+		})
+	}
+	if len(images) == 1 {
+		log.Error().Interface("item", item).Msg("Just one URL provided for currently playing item.")
+
+		item.Album.Images = append(images, images[0])
+	}
+
 	return &persistence.PlayerState{
 		PlaybackContextURI: string(currentlyPlaying.PlaybackContext.URI),
 		PlaybackItemURI:    string(item.URI),
 		TrackName:          item.Name,
+		ContextType:        currentlyPlaying.PlaybackContext.Type,
 		AlbumName:          item.Album.Name,
-		AlbumArtURL:        item.Album.Images[0].URL,
+		AlbumArtLargeURL:   item.Album.Images[0].URL,
+		AlbumArtMediumURL:  item.Album.Images[1].URL,
 		ArtistName:         joinedArtists,
 		Progress:           currentlyPlaying.Progress,
 		Duration:           item.Duration,

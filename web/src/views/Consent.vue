@@ -35,10 +35,10 @@ export default {
 
       // We have to explicitly trigger the browser to reload the page in order
       // for the Spotify OAuth redirect to kick in.
-      window.location.href = "/"
+      location.assign(`/?nocache=${new Date().getTime()}`);
     },
     exportData: function () {
-      window.location.href = this.$api.URL_DATA
+      location.assign(this.$api.URL_DATA)
     },
     deleteData: function () {
       this.$api.fetchCSRFToken().then((csrfToken) => {

@@ -39,14 +39,14 @@ func CreateConsentMiddleware(spaHandler http.Handler) mux.MiddlewareFunc {
 func consentGiven(r *http.Request) (*http.Cookie, bool) {
 	var cookie, err = r.Cookie(constants.ConsentCookieName)
 	if err == http.ErrNoCookie {
-		hlog.FromRequest(r).Debug().Msg("User did not yet give her/his consent. Serving the consent page.")
+		hlog.FromRequest(r).Debug().Msg("User did not yet give her/his consent.")
 
 		return nil, false
 	}
 
 	ts, err := strconv.ParseInt(cookie.Value, 10, 64)
 	if err != nil {
-		hlog.FromRequest(r).Debug().Msg("Consent cookie does not contain valid timestamp. Serving the consent page.")
+		hlog.FromRequest(r).Debug().Msg("Consent cookie does not contain valid timestamp.")
 
 		return nil, false
 	}

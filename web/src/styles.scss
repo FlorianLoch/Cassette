@@ -1,4 +1,13 @@
+// Define our colors
+$alabaster: #EFEDE6;
+$english-red: #B23A48;
+$red-violet: #8C2F39;
+$nice-blue: #304C89;
+
 // Customize Bootstrap
+$body-bg: $alabaster;
+$primary: $nice-blue;
+$danger: $english-red;
 
 
 // Import Boostrap-Vue and Bootstrap

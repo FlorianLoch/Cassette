@@ -110,6 +110,8 @@ func CreateSpotifyAuthMiddleware(auth spotify.SpotAuthenticator) (func(http.Hand
 			return
 		}
 
+		hlog.FromRequest(r).Debug().Msg("Successfully initialized session.")
+
 		http.Redirect(w, r, initiallyRequestedRoute.(string), http.StatusTemporaryRedirect)
 	}
 
