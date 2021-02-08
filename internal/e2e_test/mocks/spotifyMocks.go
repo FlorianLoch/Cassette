@@ -128,6 +128,51 @@ func (mr *MockSpotClientMockRecorder) CurrentUser() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CurrentUser", reflect.TypeOf((*MockSpotClient)(nil).CurrentUser))
 }
 
+// GetAlbumTracksOpt mocks base method
+func (m *MockSpotClient) GetAlbumTracksOpt(id spotify.ID, opt *spotify.Options) (*spotify.SimpleTrackPage, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAlbumTracksOpt", id, opt)
+	ret0, _ := ret[0].(*spotify.SimpleTrackPage)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAlbumTracksOpt indicates an expected call of GetAlbumTracksOpt
+func (mr *MockSpotClientMockRecorder) GetAlbumTracksOpt(id, opt interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAlbumTracksOpt", reflect.TypeOf((*MockSpotClient)(nil).GetAlbumTracksOpt), id, opt)
+}
+
+// GetPlaylistOpt mocks base method
+func (m *MockSpotClient) GetPlaylistOpt(playlistID spotify.ID, fields string) (*spotify.FullPlaylist, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPlaylistOpt", playlistID, fields)
+	ret0, _ := ret[0].(*spotify.FullPlaylist)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPlaylistOpt indicates an expected call of GetPlaylistOpt
+func (mr *MockSpotClientMockRecorder) GetPlaylistOpt(playlistID, fields interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPlaylistOpt", reflect.TypeOf((*MockSpotClient)(nil).GetPlaylistOpt), playlistID, fields)
+}
+
+// GetPlaylistTracksOpt mocks base method
+func (m *MockSpotClient) GetPlaylistTracksOpt(playlistID spotify.ID, opt *spotify.Options, fields string) (*spotify.PlaylistTrackPage, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPlaylistTracksOpt", playlistID, opt, fields)
+	ret0, _ := ret[0].(*spotify.PlaylistTrackPage)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPlaylistTracksOpt indicates an expected call of GetPlaylistTracksOpt
+func (mr *MockSpotClientMockRecorder) GetPlaylistTracksOpt(playlistID, opt, fields interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPlaylistTracksOpt", reflect.TypeOf((*MockSpotClient)(nil).GetPlaylistTracksOpt), playlistID, opt, fields)
+}
+
 // Pause mocks base method
 func (m *MockSpotClient) Pause() error {
 	m.ctrl.T.Helper()
@@ -155,21 +200,6 @@ func (m *MockSpotClient) PlayerState() (*spotify.PlayerState, error) {
 func (mr *MockSpotClientMockRecorder) PlayerState() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PlayerState", reflect.TypeOf((*MockSpotClient)(nil).PlayerState))
-}
-
-// PlayerCurrentlyPlaying mocks base method
-func (m *MockSpotClient) PlayerCurrentlyPlaying() (*spotify.CurrentlyPlaying, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PlayerCurrentlyPlaying")
-	ret0, _ := ret[0].(*spotify.CurrentlyPlaying)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// PlayerCurrentlyPlaying indicates an expected call of PlayerCurrentlyPlaying
-func (mr *MockSpotClientMockRecorder) PlayerCurrentlyPlaying() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PlayerCurrentlyPlaying", reflect.TypeOf((*MockSpotClient)(nil).PlayerCurrentlyPlaying))
 }
 
 // PlayerDevices mocks base method

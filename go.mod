@@ -15,9 +15,8 @@ require (
 	github.com/klauspost/compress v1.11.1 // indirect
 	github.com/mattn/go-isatty v0.0.12 // indirect
 	github.com/rs/zerolog v1.20.0
-	github.com/stretchr/testify v1.6.1
 	github.com/xdg/stringprep v1.0.0 // indirect
-	github.com/zmb3/spotify v0.0.0-20200814173021-9bec46940cc0
+	github.com/zmb3/spotify v1.1.0
 	go.mongodb.org/mongo-driver v1.4.2
 	golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0 // indirect
 	golang.org/x/net v0.0.0-20201010224723-4f7140c49acb // indirect

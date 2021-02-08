@@ -13,7 +13,7 @@ div
       .col-md-4(v-for="(state, slotNumber) in playerStates")
         .card.mb-4.box-shadow
           img.card-img-top(
-            :src="state.albumArtURL",
+            :src="state.albumArtLargeURL",
             alt="Album art provided by Spotify"
           )
           .card-body

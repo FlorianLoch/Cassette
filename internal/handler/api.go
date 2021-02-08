@@ -51,8 +51,13 @@ func PlayerStatesPostHandler(w http.ResponseWriter, r *http.Request) {
 
 	currentState, err := spotify.CurrentPlayerState(spotifyClient)
 	if err != nil {
-		hlog.FromRequest(r).Error().Err(err).Msg("Failed to get current state of player.")
-		http.Error(w, "Could not retrieve player state from Spotify. Please make sure your device is playing and online.", http.StatusInternalServerError)
+		if err == spotify.ErrContextNotSuspendable {
+			hlog.FromRequest(r).Debug().Err(err).Msg("Requested player state resp. its context cannot be suspended.")
+			http.Error(w, "Only albums and playlists can be suspended.", http.StatusBadRequest)
+		} else {
+			hlog.FromRequest(r).Error().Err(err).Msg("Failed to get current state of player.")
+			http.Error(w, "Could not retrieve player state from Spotify. Please make sure your device is playing and online.", http.StatusInternalServerError)
+		}
 		return
 	}
 
@@ -107,8 +112,7 @@ func PlayerStatesGetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	enriched := enrichPlayerStates(playerStates)
-	json, err := json.Marshal(enriched)
+	json, err := json.Marshal(playerStates)
 	if err != nil {
 		hlog.FromRequest(r).Error().
 			Err(err).
@@ -235,24 +239,6 @@ func UserDeleteHandler(w http.ResponseWriter, r *http.Request) {
 			hlog.FromRequest(r).Debug().Err(err).Msg("Failed deleting user data.")
 		}
 	}
-}
-
-func enrichPlayerStates(playerStates []*persistence.PlayerState) []*enrichedPlayerState {
-	enrichedPlayerStates := make([]*enrichedPlayerState, len(playerStates))
-
-	for i, playerState := range playerStates {
-		enrichedPlayerStates[i] = &enrichedPlayerState{
-			PlayerState:   playerState,
-			LinkToContext: spotify.LinkToContext(playerState.PlaybackContextURI),
-		}
-	}
-
-	return enrichedPlayerStates
-}
-
-type enrichedPlayerState struct {
-	*persistence.PlayerState
-	LinkToContext string `json:"linkToContext"` // link to open context in Spotify
 }
 
 func respondWithJSON(w http.ResponseWriter, r *http.Request, json []byte) {

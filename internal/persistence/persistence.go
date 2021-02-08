@@ -18,7 +18,8 @@ import (
 )
 
 const (
-	collectionName = "player-states-per-user"
+	collectionName = "player_states"
+	currentVersion = 3
 )
 
 var (
@@ -84,7 +85,7 @@ func (p *PlayerStatesDAO) SavePlayerStates(userID string, playerStates []*Player
 
 	opts := options.Update().SetUpsert(true)
 
-	_, err := p.collection.UpdateOne(context.TODO(), bson.D{{Key: "_id", Value: hashedUserID}}, bson.D{{Key: "$set", Value: bson.D{{Key: "playerStates", Value: playerStates}, {Key: "version", Value: "2"}}}}, opts)
+	_, err := p.collection.UpdateOne(context.TODO(), bson.D{{Key: "_id", Value: hashedUserID}}, bson.D{{Key: "$set", Value: bson.D{{Key: "playerStates", Value: playerStates}, {Key: "version", Value: currentVersion}}}}, opts)
 
 	if err != nil {
 		return err
@@ -137,17 +138,23 @@ func hashUserID(userID string) string {
 type PlayerState struct {
 	PlaybackContextURI string `json:"-" bson:"playbackContextURI"`
 	PlaybackItemURI    string `json:"-" bson:"playbackItemURI"`
+	LinkToContext      string `json:"linkToContext" bson:"linkToContext"`                   // link to open context in Spotify
+	ContextType        string `json:"contextType" bson:"contextType"`                       // either "album" or "playlist"
+	PlaylistName       string `json:"playlistName,omitempty" bson:"playlistName,omitempty"` // only populated when ContextType is "playlist"
+	AlbumArtLargeURL   string `json:"albumArtLargeURL" bson:"albumArtLargeURL"`             // should be 640px
+	AlbumArtMediumURL  string `json:"albumArtMediumURL" bson:"albumArtMediumURL"`           // should be 300px
 	TrackName          string `json:"trackName" bson:"trackName"`
 	AlbumName          string `json:"albumName" bson:"albumName"`
-	AlbumArtURL        string `json:"albumArtURL" bson:"albumArtURL"`
 	ArtistName         string `json:"artistName" bson:"artistName"`
+	TrackIndex         int    `json:"trackIndex" bson:"trackIndex"` // differing from Spotify's 'TrackNumber' this is an absolute number, not relative to the disk the track is contained on
+	TotalTracks        int    `json:"totalTracks" bson:"totalTracks"`
 	Progress           int    `json:"progress" bson:"progress"`
 	Duration           int    `json:"duration" bson:"duration"`
 	ShuffleActivated   bool   `json:"shuffleActivated" bson:"shuffleActivated"`
 }
 
 type persistenceItem struct {
-	Version      string         `bson:"version" json:"version"`
+	Version      int            `bson:"version" json:"version"`
 	UserID       string         `bson:"_id" json:"_id"`
 	PlayerStates []*PlayerState `bson:"playerStates" json:"playerStates"`
 }

@@ -2,6 +2,8 @@ package spotify
 
 import (
 	"errors"
+	"fmt"
+	"strings"
 
 	"github.com/rs/zerolog/log"
 	spotifyAPI "github.com/zmb3/spotify"
@@ -10,33 +12,106 @@ import (
 	"github.com/florianloch/cassette/internal/persistence"
 )
 
-func isContextResumable(playbackContext spotifyAPI.PlaybackContext) bool {
+const (
+	pagingLimit = 50
+)
+
+var (
+	ErrTrackNotFoundInContext    = errors.New("could not find track in context")
+	ErrNoActiveDeviceForPlayback = errors.New("no (active) device available for playback")
+	ErrContextNotSuspendable     = errors.New("the current context cannot be restored! It is only possible to store playing positions in albums and playlists")
+)
+
+func isContextSuspendable(playbackContext spotifyAPI.PlaybackContext) bool {
 	t := playbackContext.Type
 
 	return t == "album" || t == "playlist"
 }
 
 func CurrentPlayerState(client SpotClient) (*persistence.PlayerState, error) {
-	currentlyPlaying, err := client.PlayerCurrentlyPlaying()
+	playerState, err := client.PlayerState()
+	var shuffleActivated bool
 	if err != nil {
-		return nil, errors.New("could not read whats currently playing")
+		return nil, fmt.Errorf("could not read whats currently playing: %w", err)
 	}
+	shuffleActivated = playerState.ShuffleState
+
+	currentlyPlaying := &playerState.CurrentlyPlaying
 
 	//Check whether this position could possibly restored afterwards
-	if !isContextResumable(currentlyPlaying.PlaybackContext) {
-		return nil, errors.New("the current context cannot be restored! It is only possible to store playing positions in albums and playlists")
+	if !isContextSuspendable(currentlyPlaying.PlaybackContext) {
+		return nil, ErrContextNotSuspendable
 	}
 
-	playerState, err := client.PlayerState()
-	shuffleActivated := false
-	if err == nil {
-		shuffleActivated = playerState.ShuffleState
-	} else {
+	item := currentlyPlaying.Item
+	joinedArtists := ""
+	for idx, artist := range item.Artists {
+		joinedArtists += artist.Name
+		if idx < len(item.Artists)-1 {
+			joinedArtists += ", "
+		}
+	}
+
+	// Ensure there are two URLs in the 'Images' slice
+	images := item.Album.Images
+	if len(images) == 0 {
 		// Kind of an assert, should not happen. In case it does it's not too important though
-		log.Error().Err(err).Msg("Could not read the current player state, i.e. could not detect whether shuffle is activated or not.")
+		log.Error().Interface("item", item).Msg("No image URL provided for currently playing item.")
+
+		item.Album.Images = append(images, spotifyAPI.Image{
+			URL: "",
+		})
+	}
+	if len(images) == 1 {
+		log.Error().Interface("item", item).Msg("Just one URL provided for currently playing item.")
+
+		item.Album.Images = append(images, images[0])
 	}
 
-	return playerStateFromCurrentlyPlaying(currentlyPlaying, shuffleActivated), nil
+	trackIndex, totalTracks, err := indexOfCurrentTrack(currentlyPlaying, client)
+	if err != nil {
+		// No need to stop processing this request because of this error...
+		log.Error().Err(err).Interface("item", item).Msg("Could not get index of track in context.")
+	}
+
+	linkToContext, ok := currentlyPlaying.PlaybackContext.ExternalURLs["spotify"]
+	if !ok {
+		// No need to stop processing this request because of this error...
+		log.Error().
+			Err(err).
+			Interface("playbackContext", currentlyPlaying.PlaybackContext).
+			Msg("Could not get link to context from response.")
+	}
+
+	playlistName := ""
+	if currentlyPlaying.PlaybackContext.Type == "playlist" {
+		playlistID := idOfContext(currentlyPlaying)
+		playlist, err := client.GetPlaylistOpt(playlistID, "name")
+		if err != nil {
+			// No need to stop processing this request because of this error...
+			log.Error().Err(err).Str("playlistID", string(playlistID)).Msg("Could not get name of playlist.")
+		} else {
+			playlistName = playlist.Name
+		}
+	}
+
+	return &persistence.PlayerState{
+		PlaybackContextURI: string(currentlyPlaying.PlaybackContext.URI),
+		PlaybackItemURI:    string(item.URI),
+		LinkToContext:      linkToContext,
+		ContextType:        currentlyPlaying.PlaybackContext.Type,
+		PlaylistName:       playlistName,
+		AlbumArtLargeURL:   item.Album.Images[0].URL,
+		AlbumArtMediumURL:  item.Album.Images[1].URL,
+		TrackName:          item.Name,
+		AlbumName:          item.Album.Name,
+		ArtistName:         joinedArtists,
+		TrackIndex:         trackIndex,
+		TotalTracks:        totalTracks,
+		Progress:           currentlyPlaying.Progress,
+		Duration:           item.Duration,
+		ShuffleActivated:   shuffleActivated,
+	}, nil
 }
 
 func PausePlayer(client SpotClient) error {
@@ -88,7 +163,7 @@ func currentDeviceForPlayback(client SpotClient) (spotifyAPI.ID, error) {
 	}
 
 	if len(devices) == 0 {
-		return "", errors.New("No (active) device available for playback!")
+		return "", ErrNoActiveDeviceForPlayback
 	}
 
 	for _, device := range devices {
@@ -100,45 +175,84 @@ func currentDeviceForPlayback(client SpotClient) (spotifyAPI.ID, error) {
 	return devices[0].ID, nil
 }
 
-func playerStateFromCurrentlyPlaying(currentlyPlaying *spotifyAPI.CurrentlyPlaying, shuffleActivated bool) *persistence.PlayerState {
-	item := currentlyPlaying.Item
-	joinedArtists := ""
-	for idx, artist := range item.Artists {
-		joinedArtists += artist.Name
-		if idx < len(item.Artists)-1 {
-			joinedArtists += ", "
+func indexOfCurrentTrack(currentlyPlaying *spotifyAPI.CurrentlyPlaying, client SpotClient) (int, int, error) {
+	typ := currentlyPlaying.PlaybackContext.Type
+
+	// Has to be "album" or "playlist" - this should be ensured upstream.
+	// So this check is basically an assert
+	isAlbum := typ == "album"
+	isPlaylist := typ == "playlist"
+	if !isAlbum && !isPlaylist {
+		log.Panic().Str("type", typ).Msg("called with context neither being 'album' nor 'playlist'")
+	}
+
+	trackID := currentlyPlaying.Item.ID
+	contextID := idOfContext(currentlyPlaying)
+
+	offset := 0
+	limit := pagingLimit
+	options := spotifyAPI.Options{
+		Limit:  &limit,
+		Offset: &offset,
+	}
+	var index int
+	var total int
+
+	for {
+		if isAlbum {
+			page, err := client.GetAlbumTracksOpt(contextID, &options)
+			if err != nil {
+				return -1, -1, err
+			}
+
+			index = findTrackInSimpleTrackPages(trackID, page)
+			total = page.Total
+		} else {
+			page, err := client.GetPlaylistTracksOpt(contextID, &options, "total,limit,items(track(id))")
+			if err != nil {
+				return -1, -1, err
+			}
+
+			index = findTrackInPlaylistTrackPage(trackID, page)
+			total = page.Total
+		}
+
+		if index >= 0 {
+			index += offset + 1 // because the user probably does not expect zero-based counting
+			return index, total, nil
+		}
+
+		offset += limit
+		if offset >= total {
+			return -1, -1, ErrTrackNotFoundInContext
+		}
+	}
+}
+
+func idOfContext(currentlyPlaying *spotifyAPI.CurrentlyPlaying) spotifyAPI.ID {
+	uri := currentlyPlaying.PlaybackContext.URI
+	splits := strings.Split(string(uri), ":")
+	return spotifyAPI.ID(splits[len(splits)-1])
+}
+
+func findTrackInSimpleTrackPages(trackID spotifyAPI.ID, page *spotifyAPI.SimpleTrackPage) int {
+	for i, track := range page.Tracks {
+		if track.ID == trackID {
+			return i
 		}
 	}
 
-	// Ensure there are two URLs in the Images slice
-	images := item.Album.Images
-	if len(images) == 0 {
-		// Kind of an assert, should not happen. In case it does it's not too important though
-		log.Error().Interface("item", item).Msg("No image URL provided for currently playing item.")
+	return -1
+}
 
-		item.Album.Images = append(images, spotifyAPI.Image{
-			URL: "",
-		})
-	}
-	if len(images) == 1 {
-		log.Error().Interface("item", item).Msg("Just one URL provided for currently playing item.")
-
-		item.Album.Images = append(images, images[0])
+func findTrackInPlaylistTrackPage(trackID spotifyAPI.ID, page *spotifyAPI.PlaylistTrackPage) int {
+	for i, track := range page.Tracks {
+		if track.Track.ID == trackID {
+			return i
+		}
 	}
 
-	return &persistence.PlayerState{
-		PlaybackContextURI: string(currentlyPlaying.PlaybackContext.URI),
-		PlaybackItemURI:    string(item.URI),
-		TrackName:          item.Name,
-		ContextType:        currentlyPlaying.PlaybackContext.Type,
-		AlbumName:          item.Album.Name,
-		AlbumArtLargeURL:   item.Album.Images[0].URL,
-		AlbumArtMediumURL:  item.Album.Images[1].URL,
-		ArtistName:         joinedArtists,
-		Progress:           currentlyPlaying.Progress,
-		Duration:           item.Duration,
-		ShuffleActivated:   shuffleActivated,
-	}
+	return -1
 }
 
 type CondensedPlayerDevice struct {
