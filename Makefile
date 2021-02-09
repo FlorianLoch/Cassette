@@ -1,6 +1,6 @@
 default: build-all
 
-.PHONY: build-all clean run test build-web docker-build docker-run heroku-deploy-docker heroku-init dokku-deploy coverage show-coverage lint
+.PHONY: build-all clean run test build-web docker-build docker-run heroku-deploy-docker heroku-init dokku-deploy coverage show-coverage lint install-hooks
 
 cassette_bin = ./cassette
 cov_profile = ./coverage.out
@@ -12,6 +12,10 @@ all_go_files = $(shell find . -type f -name '*.go')
 # along with changes in './web/package.json' which is considered.
 all_web_files = $(shell find ./web -path $(node_modules) -prune -false -o -path $(web_dist) -prune -false -o -type f -name '*')
 all_files = $(shell find . -path ./.make -prune -false -o -path $(node_modules) -prune -false -o -path $(web_dist) -prune -false -o -type f -name '*')
+
+install-hooks:
+	rm -f .git/hooks/pre-commit
+	ln -s ../../pre-commit.sh .git/hooks/pre-commit
 
 build-all: $(web_dist) $(cassette_bin)
 
