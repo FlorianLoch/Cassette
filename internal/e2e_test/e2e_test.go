@@ -225,6 +225,12 @@ func login(t *testing.T, e *httpexpect.Expect, authMock *mocks.MockSpotAuthentic
 	r = e.GET("/initialRoute").Expect()
 	r.Status(http.StatusOK)
 	r.Body().Contains(snippedFromIndexPage)
+
+	// Requesting the callback route again we should be forwarded to the entry page again
+	// because there is a token within our session
+	r = e.GET(constants.OAuthCallbackRoute).Expect()
+	r.Status(http.StatusTemporaryRedirect)
+	r.Header("Location").Equal("/")
 }
 
 type pointerMatcher struct {

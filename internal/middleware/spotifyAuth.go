@@ -62,6 +62,14 @@ func CreateSpotifyAuthMiddleware(auth spotify.SpotAuthenticator) (func(http.Hand
 	spotOAuthCBHandler := func(w http.ResponseWriter, r *http.Request) {
 		session := r.Context().Value(constants.FieldKeySession).(*sessions.Session)
 
+		if _, ok := session.Values[constants.SessionKeySpotifyToken]; ok {
+			hlog.FromRequest(r).Debug().Msg("OAuth token already present. Forwarding to entry page.")
+
+			http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+
+			return
+		}
+
 		rawRandomState, ok := session.Values[constants.SessionKeyOAuthRandomState]
 		if !ok {
 			// Might happen in case user requests the OAuth callback route after having
