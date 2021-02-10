@@ -1,6 +1,8 @@
 <template lang="pug">
 div
-  .active-device-list.px-3.py-2(:class="{ 'no-active-devices': !playbackDevice }")
+  .active-device-list.px-3.py-2(
+    :class="{ 'no-active-devices': !playbackDevice }"
+  )
     div(v-if="playbackDevicesInitiallyRequested")
       div(v-if="playbackDevice")
         i.fas.fa-volume-up.spacer
@@ -11,7 +13,7 @@ div
   .container
     .row.mt-4
       .col-md-4(v-for="(state, slotNumber) in playerStates")
-        .card.mb-4.box-shadow
+        .card.mb-4.bg-light.box-shadow
           img.card-img-top(
             :src="state.albumArtLargeURL",
             alt="Album art provided by Spotify"
@@ -63,14 +65,8 @@ div
                   variant="danger"
                 )
                   i.fas.fa-trash-alt
-      .col-md-4
-        .card.mb-4.box-shadow
-          button.btn.btn-block.btn-primary.store-state-btn(
-            type="button",
-            @click="storePlayerState",
-            :disabled="!playbackDevice"
-          )
-            i.fas.fa-stop-circle
+      a.floating-btn(@click="storePlayerState", :disabled="!playbackDevice")
+        i.fas.fa-pause-circle
   div
 </template>
 

@@ -90,6 +90,15 @@ body {
   }
 }
 
+.footer {
+  height: 6rem;
+  font-size: 1rem;
+}
+
+.page-content {
+  height: calc(100vh - 6rem);
+}
+
 .not-on-mobile {
   @media (max-width: 767px) {
     display: none !important;
@@ -125,8 +134,35 @@ body {
   min-height: 250px;
 }
 
-.store-state-btn {
-  height: 400px;
-  font-size: 100pt;
+.floating-btn {
+  position: fixed;
+  width: 6rem;
+  height: 6rem;
+  bottom: 40px;
+  // Using this instead of 'right: 40px' avoid jumping in case
+  // a scrollbar gets shown. This happens for example when the modal is invoked.
+  left: calc(100vw - 6rem - 40px);
+  // right: 35px;
+  background-color: $nice-blue;
+  color: $alabaster;
+  border-radius: 3rem;
+  text-align: center;
+  vertical-align: middle;
+  box-shadow: 2px 2px 5px darken($color: $nice-blue, $amount: 5);
+  transition: background-color 0.5s;
+
+  i {
+    line-height: 6rem;
+    font-size: 5rem;
+    transition: transform 1s;
+
+    &:hover {
+      transform: rotate(360deg);
+    }
+  }
+
+  &:hover {
+    background-color: $alabaster;
+  }
 }
 // until here
