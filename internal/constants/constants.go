@@ -23,18 +23,18 @@ const (
 	EnvSpotifyClientSecret = "CASSETTE_SPOTIFY_CLIENT_KEY"
 
 	// Keys for context fields
-	FieldKeySession       = ctxKey("session")
-	FieldKeyDao           = ctxKey("dao")
-	FieldKeySlot          = ctxKey("slot")
-	FieldKeyUser          = ctxKey("user")
-	FieldKeySpotifyClient = ctxKey("spotifyClient")
+	FieldKeySession = ctxKey(iota)
+	FieldKeyDao
+	FieldKeySlot
+	FieldKeyUser
+	FieldKeySpotifyClient
 
 	// Keys for session values, as these are stored in the session cookie use something small
-	SessionKeyUser                    = sessionKey(0)
-	SessionKeySpotifyToken            = sessionKey(1)
-	SessionKeyInitiallyRequestedRoute = sessionKey(2)
-	SessionKeyOAuthRandomState        = sessionKey(3)
+	SessionKeyUser = sessionKey(iota)
+	SessionKeySpotifyToken
+	SessionKeyInitiallyRequestedRoute
+	SessionKeyOAuthRandomState
 )
 
-type ctxKey string
+type ctxKey int
 type sessionKey int

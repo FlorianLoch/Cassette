@@ -3,7 +3,7 @@
 
 # Cassette
 
-![](./cassette_logo.svg)
+![](./web/assets/cassette_logo.svg)
 
 An "audio book helper utility for Spotify&reg;".
 

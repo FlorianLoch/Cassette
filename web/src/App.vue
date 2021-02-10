@@ -1,36 +1,17 @@
 <template lang="pug">
   #app.v-cloak
-    .header
-      h3
-        | Cassette
-        small.text-muted.ml-2 for Spotify
+    .header.p-3.center-sm
+      h1#title.only-mobile.align-bottom Cassette
+      img#logo.d-inline.mr-3(src="../assets/cassette_logo.svg")
+      h1#title.not-on-mobile.d-inline.align-bottom Cassette
     keep-alive
       router-view
-    .footer
+    .footer.p-3.text-center
       | Content provided by Spotify.
       br
-      | App powered by
+      | Check out Cassette's source code at
       |
-      a(href="https://golang.org" target="_blank") Go
-      | ,
-      |
-      a(href="https://vuejs.org" target="_blank") Vue.js
-      |
-      | and
-      |
-      a(href="https://getbootstrap.com" target="_blank") Bootstrap
-      |. Icons originate from the
-      |
-      a(href="https://fontawesome.com" target="_blank") Font Awesome project
-      |
-      | (see
-      |
-      a(href="https://fontawesome.com/license" target="_blank") license
-      | ).
-      br
-      | Check out at
-      |
-      a(href="https://github.com/florianloch/cassette") Github
+      a(href="https://github.com/florianloch/cassette") GitHub
       |.
       //- TODO: Include this again
       //- br
