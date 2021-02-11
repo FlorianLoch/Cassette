@@ -5,14 +5,14 @@ div
   )
     div(v-if="playbackDevicesInitiallyRequested")
       div(v-if="playbackDevice")
-        i.fas.fa-volume-up.spacer
+        i.fas.fa-volume-up.mr-2
         | Currently playing on "{{ playbackDevice.name }}".
       .center-sm(v-else)
-        button.btn.btn-warning.btn-lg(@click="fetchActiveDevices()") No playback on any device. Refresh.
+        b-button.btn-lg(variant="warning", @click="fetchActiveDevices()") No playback on any device. Click&nbsp;to&nbsp;refresh.
 
   .container
     .row.mt-4
-      .col-md-4(v-for="(state, slotNumber) in playerStates")
+      .col-lg-4.col-md-6(v-for="(state, slotNumber) in playerStates")
         .card.mb-4.bg-light.box-shadow
           img.card-img-top(
             :src="state.albumArtLargeURL",
@@ -21,15 +21,22 @@ div
           .card-body
             .card-content
               h5.card-title {{ state.trackName }}
-              p.card-text
-                i.fas.fa-compact-disc.spacer
-                | {{ state.albumName }}
-              p.card-text
-                i.fas.fa-user-friends.spacer
-                | {{ state.artistName }}
-              p.card-text
-                i.fas.fa-hourglass-end.spacer
-                | {{ state.progress | time }} / {{ state.duration | time }}
+              div.info-table
+                div.table-row
+                  div.table-cell
+                    i.fas.fa-compact-disc
+                  div.table-cell
+                    p {{ state.albumName }}
+                div.table-row
+                  div.table-cell
+                    i.fas.fa-user-friends
+                  div.table-cell
+                    p {{ state.artistName }}
+                div.table-row
+                  div.table-cell
+                    i.fas.fa-hourglass-end
+                  div.table-cell
+                    p {{ state.progress | time }} / {{ state.duration | time }}
             .row.mt-2
               .col-lg-4.p-1
                 b-button.btn-block(
@@ -52,13 +59,14 @@ div
                     b-dropdown-item(
                       v-for="device in activeDevices",
                       @click="restoreFromPlayerState(slotNumber, device.id, device.name)",
-                      :key="device.name"
+                      :key="device.id"
                     ) {{ device.name }}
                 template(v-else)
-                  b-button(
+                  b-button.btn-block(
                     @click="restoreFromPlayerState(slotNumber)",
                     variant="success"
                   )
+                    i.fas.fa-play-circle
               .col-lg-4.p-1
                 b-button.btn-block(
                   @click="deletePlayerState(slotNumber)",
@@ -158,7 +166,8 @@ export default {
         console.info(`Successfully restored player state from slot ${slotNumber} on device ${deviceID}.`)
       }, (err) => {
         this.showErrorMessage(`Failed to restore player state on ${(deviceName !== undefined) ? `"${deviceName}"` : "currently active device"}.
-        Please make sure Spotify is active on this device. This can be done by starting some arbitrary track. Please try again then.`)
+        Please make sure Spotify is active on this device. This can be done by starting some arbitrary track. Please try again then.
+        If the issue persists there might also be an issue with the specific track.`)
         console.error(`Failed to restore player state from slot ${slotNumber} on device ${deviceID}.`, err)
       })
     }

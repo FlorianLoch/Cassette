@@ -178,7 +178,7 @@ func PlayerStatesRestoreHandler(w http.ResponseWriter, r *http.Request) {
 		hlog.FromRequest(r).Debug().
 			Int("slot", slot).
 			Interface("playerStates", playerStates).
-			Msg("Unable to delete player state. Slot out of range.")
+			Msg("Unable to restore player state. Slot out of range.")
 		http.Error(w, "'slot' is not in the range of existing slots.", http.StatusBadRequest)
 		return
 	}

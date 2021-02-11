@@ -178,9 +178,6 @@ func setupAPI(webRoot string, isDevMode bool) http.Handler {
 	r.Get(constants.OAuthCallbackRoute, spotOAuthCBHandler)
 
 	r.Route("/api", func(r chi.Router) {
-		// if isDevMode {
-		// 	r.Use(debugLogger)
-		// }
 		r.Use(csrfMiddleware)
 
 		r.Head("/csrfToken", func(w http.ResponseWriter, r *http.Request) {
@@ -355,16 +352,6 @@ func checkSlotParameter(r *http.Request) (int, error) {
 
 	return slot, nil
 }
-
-// func debugLogger(nxt http.Handler) http.Handler {
-// 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-// 		token := r.Header.Get(constants.CSRFHeaderName)
-
-// 		hlog.FromRequest(r).Debug().Str("csrfToken", token).Stringer("url", r.URL).Interface("cookies", r.Cookies()).Msg("")
-
-// 		nxt.ServeHTTP(w, r)
-// 	})
-// }
 
 type csrfErrorHandler struct{}
 

@@ -100,7 +100,7 @@ heroku-deploy-docker: .make/heroku-login
 
 dokku-deploy: .make/dokku-deploy
 
-.make/dokku-deploy: .make/docker-build
+.make/dokku-deploy: test .make/docker-build
 	docker tag fdloch/cassette:latest dokku/cassette:latest
 	docker save dokku/cassette:latest | ssh florian@vps.fdlo.ch "docker load"
 	ssh -t florian@vps.fdlo.ch "sudo dokku tags:deploy cassette latest"

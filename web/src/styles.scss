@@ -1,22 +1,21 @@
 // Define our colors
-$alabaster: #EFEDE6;
-$english-red: #B23A48;
-$red-violet: #8C2F39;
-$nice-blue: #304C89;
+$alabaster: #efede6;
+$english-red: #b23a48;
+$red-violet: #8c2f39;
+$nice-blue: #304c89;
 
 // Customize Bootstrap
 $body-bg: $alabaster;
 $primary: $nice-blue;
 $danger: $english-red;
 
-
 // Import Boostrap-Vue and Bootstrap
 // Then import Bootstrap an BootstrapVue SCSS files (order is important)
-@import 'node_modules/bootstrap/scss/bootstrap.scss';
-@import 'node_modules/bootstrap-vue/src/index.scss';
+@import "node_modules/bootstrap/scss/bootstrap.scss";
+@import "node_modules/bootstrap-vue/src/index.scss";
 
 // Import n-progress and customize it a little
-@import '~nprogress/nprogress.css';
+@import "~nprogress/nprogress.css";
 
 // Make the progressbar a little bolder and more fancy in general
 $progress-bar: $alabaster;
@@ -30,39 +29,32 @@ $progress-bar: $alabaster;
   box-shadow: 0 0 10px $progress-bar, 0 0 5px $progress-bar !important;
 }
 
-// Spinner is currently deactivated
-#nprogress .spinner-icon {
-  border-top-color: $progress-bar !important;
-  border-left-color: $progress-bar !important;
-  border-radius: 50%;
-}
-
-
 // Own styles
 html {
   font-size: 16px;
 }
 
 .center-sm {
-  @media (max-width: 767px) {
+  @include media-breakpoint-down(sm) {
     // Center logo on phones, title is not shown
     text-align: center !important;
   }
 }
 
 .box-shadow {
-  box-shadow: 0 .25rem .75rem rgba(0, 0, 0, .05);
+  box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.05);
 }
 
 [v-cloak] {
-  display: none
+  display: none;
 }
 
 body {
   background-color: rgb(30, 30, 30);
 }
 
-.header, .footer {
+.header,
+.footer {
   width: 100%;
   padding: 5px;
   background-color: $red-violet;
@@ -96,17 +88,17 @@ body {
 }
 
 .page-content {
-  height: calc(100vh - 6rem);
+  min-height: calc(100vh - 6rem);
 }
 
 .not-on-mobile {
-  @media (max-width: 767px) {
+  @include media-breakpoint-down(xs) {
     display: none !important;
   }
 }
 
 .only-mobile {
-  @media (min-width: 768px) {
+  @include media-breakpoint-up(sm) {
     display: none !important;
   }
 }
@@ -116,9 +108,6 @@ body {
   background-color: $nice-blue;
   color: $alabaster;
   font-size: 1.2rem;
-
-  white-space: nowrap;
-  overflow: auto;
 }
 
 .no-active-devices {
@@ -126,43 +115,75 @@ body {
   color: black !important;
 }
 
-.spacer {
-  margin-right: 10px;
-}
-
 .card-content {
   min-height: 250px;
+
+  .info-table {
+    display: table;
+    table-layout: fixed;
+  }
+
+  .table-row {
+    display: table-row;
+  }
+
+  .table-cell {
+    display: table-cell;
+  }
+
+  .table-cell:nth-child(1) {
+    min-width: 2rem;
+  }
+
+  p, h5 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
 }
 
 .floating-btn {
+  $width: 6rem;
+  $margin_page_edge: 2.5rem;
   position: fixed;
-  width: 6rem;
-  height: 6rem;
-  bottom: 40px;
-  // Using this instead of 'right: 40px' avoid jumping in case
+  width: $width;
+  height: $width;
+  bottom: $margin_page_edge;
+  // Using this instead of 'right: $margin' avoid jumping in case
   // a scrollbar gets shown. This happens for example when the modal is invoked.
-  left: calc(100vw - 6rem - 40px);
+  left: calc(100vw - #{$width} - #{$margin_page_edge});
   // right: 35px;
   background-color: $nice-blue;
   color: $alabaster;
-  border-radius: 3rem;
+  border-radius: calc(#{$width} / 2);
   text-align: center;
   vertical-align: middle;
-  box-shadow: 2px 2px 5px darken($color: $nice-blue, $amount: 5);
-  transition: background-color 0.5s;
+  box-shadow: 0 0 5px darken($color: $nice-blue, $amount: 5);
+  transition: color 1s, background-color 1s;
 
-  i {
-    line-height: 6rem;
-    font-size: 5rem;
-    transition: transform 1s;
+  &[disabled] {
+    background-color: grey;
+  }
 
+  &:not([disabled]) {
     &:hover {
+      background-color: $alabaster;
+      color: $nice-blue;
+    }
+
+    i:hover {
       transform: rotate(360deg);
     }
   }
 
   &:hover {
-    background-color: $alabaster;
+    color: $alabaster;
+  }
+
+  i {
+    line-height: $width;
+    font-size: 5rem;
+    transition: transform 1s;
   }
 }
-// until here
