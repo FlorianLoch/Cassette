@@ -18,10 +18,17 @@ div
             :src="state.albumArtLargeURL",
             alt="Album art provided by Spotify"
           )
+          b-progress(:max="state.totalTracks" variant="success")
+            b-progress-bar(:value="state.trackIndex")
           .card-body
             .card-content
               h5.card-title {{ state.trackName }}
               div.info-table
+                div.table-row(v-if="state.playlistName")
+                  div.table-cell
+                    i.fas.fa-list-ul
+                  div.table-cell
+                    p {{ state.playlistName }}
                 div.table-row
                   div.table-cell
                     i.fas.fa-compact-disc

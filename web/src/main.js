@@ -4,7 +4,7 @@ import router from './router'
 import API from './lib/API'
 import axios from "axios"
 import NProgress from "nprogress"
-import { ModalPlugin, DropdownPlugin, BButton } from 'bootstrap-vue'
+import { ModalPlugin, DropdownPlugin, BButton, ProgressPlugin } from 'bootstrap-vue'
 
 import './styles.scss'
 
@@ -23,6 +23,7 @@ axios.interceptors.response.use((response) => {
 Vue.use(API, {axios})
 Vue.use(ModalPlugin)
 Vue.use(DropdownPlugin)
+Vue.use(ProgressPlugin)
 Vue.component('b-button', BButton)
 
 NProgress.configure({ showSpinner: false });

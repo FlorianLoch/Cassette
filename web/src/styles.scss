@@ -115,6 +115,12 @@ body {
   color: black !important;
 }
 
+.progress {
+  // Adjust the progress bar of Vue Bootstrap a little
+  border-radius: 0;
+  height: 0.7rem;
+}
+
 .card-content {
   min-height: 250px;
 
@@ -135,11 +141,18 @@ body {
     min-width: 2rem;
   }
 
+  $lh: 1.5rem;
+  h5 {
+    line-height: $lh;
+    height: calc(2 * #{$lh})
+  }
+
   p, h5 {
     overflow: hidden;
     display: -webkit-box;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
+    margin-bottom: 0.7rem;
   }
 }
 
