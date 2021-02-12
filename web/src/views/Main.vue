@@ -5,7 +5,7 @@ div
   )
     div(v-if="playbackDevicesInitiallyRequested")
       div(v-if="playbackDevice")
-        i.fas.fa-volume-up.mr-2
+        i.fa.fa-volume-up.mr-2
         | Currently playing on "{{ playbackDevice.name }}".
       .center-sm(v-else)
         b-button.btn-lg(variant="warning", @click="fetchActiveDevices()") No playback on any device. Click&nbsp;to&nbsp;refresh.
@@ -18,32 +18,40 @@ div
             :src="state.albumArtLargeURL",
             alt="Album art provided by Spotify"
           )
-          b-progress(:max="state.totalTracks" variant="success")
+          b-progress(:max="state.totalTracks", variant="success")
             b-progress-bar(:value="state.trackIndex")
           .card-body
             .card-content
               h5.card-title {{ state.trackName }}
-              div.info-table
-                div.table-row(v-if="state.playlistName")
-                  div.table-cell
-                    i.fas.fa-list-ul
-                  div.table-cell
+              .info-table
+                .table-row(v-if="state.playlistName")
+                  .table-cell
+                    i.fa.fa-list-ul
+                  .table-cell
                     p {{ state.playlistName }}
-                div.table-row
-                  div.table-cell
-                    i.fas.fa-compact-disc
-                  div.table-cell
+                .table-row
+                  .table-cell
+                    i.fa.fa-music
+                  .table-cell
                     p {{ state.albumName }}
-                div.table-row
-                  div.table-cell
-                    i.fas.fa-user-friends
-                  div.table-cell
+                .table-row
+                  .table-cell
+                    i.fa.fa-user
+                  .table-cell
                     p {{ state.artistName }}
-                div.table-row
-                  div.table-cell
-                    i.fas.fa-hourglass-end
-                  div.table-cell
-                    p {{ state.progress | time }} / {{ state.duration | time }}
+                .table-row
+                  .table-cell
+                    i.fa.fa-hourglass-end
+                  .table-cell
+                    p {{ state.progress | time }} / {{ state.duration | time }} (track {{ state.trackIndex }} of {{ state.totalTracks }})
+                .table-row
+                  .table-cell
+                    i.fa.fa-spotify
+                  .table-cell
+                    p
+                      a(:href="state.linkToContext")
+                        | Open in Spotify
+                        i.fa.fa-external-link.ml-1
             .row.mt-2
               .col-lg-4.p-1
                 b-button.btn-block(
@@ -51,7 +59,7 @@ div
                   :disabled="!playbackDevice",
                   variant="primary"
                 )
-                  i.fas.fa-stop-circle
+                  i.fa.fa-stop-circle.fa-lg
               .col-lg-4.p-1
                 template(v-if="activeDevices.length > 1")
                   b-dropdown.btn-block(
@@ -60,7 +68,7 @@ div
                     variant="success"
                   )
                     template(#button-content)
-                      i.fas.fa-play-circle
+                      i.fa.fa-play-circle.fa-lg
                     b-dropdown-item.disabled Start playback on:
                     b-dropdown-divider
                     b-dropdown-item(
@@ -73,15 +81,15 @@ div
                     @click="restoreFromPlayerState(slotNumber)",
                     variant="success"
                   )
-                    i.fas.fa-play-circle
+                    i.fa.fa-play-circle.fa-lg
               .col-lg-4.p-1
                 b-button.btn-block(
                   @click="deletePlayerState(slotNumber)",
                   variant="danger"
                 )
-                  i.fas.fa-trash-alt
+                  i.fa.fa-trash.fa-lg
       a.floating-btn(@click="storePlayerState", :disabled="!playbackDevice")
-        i.fas.fa-pause-circle
+        i.fa.fa-pause-circle
   div
 </template>
 
