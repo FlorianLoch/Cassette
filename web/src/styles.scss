@@ -82,13 +82,14 @@ body {
   }
 }
 
+$footer-height: 7rem;
 .footer {
-  height: 6rem;
+  height: $footer-height;
   font-size: 1rem;
 }
 
 .page-content {
-  min-height: calc(100vh - 6rem);
+  min-height: calc(100vh - #{$footer-height});
 }
 
 .not-on-mobile {

@@ -29,6 +29,9 @@ func CreateConsentMiddleware(spaHandler http.Handler) mux.MiddlewareFunc {
 			// To make testing easier we send the cookie back once we received it.
 			// By this the client will be able to put the cookie in its jar.
 			// For browsers it should make no difference as the user already created the cookie.
+			// But we need to set the path explicitly, otherwise multiple cookies will be set depending on the
+			// request route.
+			cookie.Path = "/"
 			http.SetCookie(w, cookie)
 
 			next.ServeHTTP(w, r)
