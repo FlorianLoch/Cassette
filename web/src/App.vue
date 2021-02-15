@@ -16,7 +16,7 @@
       a(href="https://github.com/florianloch/cassette") GitHub
       | .
     p
-      router-link(:to="{name: 'Consent'}") Manage your data.
+      router-link(:to="{name: 'Consent'}") Privacy policy / manage your data.
 
       //- br
       //- | Running UI version #{version}, built at #{buildDate}.

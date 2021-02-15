@@ -123,7 +123,7 @@ $footer-height: 7rem;
 }
 
 .card-content {
-  min-height: 250px;
+  min-height: 280px;
 
   .info-table {
     display: table;
@@ -158,7 +158,7 @@ $footer-height: 7rem;
 }
 
 .floating-btn {
-  $width: 6rem;
+  $width: 7rem;
   $margin_page_edge: 2.5rem;
   position: fixed;
   width: $width;
@@ -197,7 +197,19 @@ $footer-height: 7rem;
 
   i {
     line-height: $width;
-    font-size: 5rem;
+    font-size: $width;
     transition: transform 1s;
+  }
+}
+
+// In order to for some spam bot to find this email address it needs to be capable of rendering
+// the DOM including the CSS pseudo selectors. A simple regex should not be able to find it.
+#emailAddress {
+  &::before {
+      content: "me@";
+  }
+
+  &::after {
+      content: "fdlo.ch";
   }
 }
