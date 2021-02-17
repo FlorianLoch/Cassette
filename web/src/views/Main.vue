@@ -53,14 +53,14 @@ div
                         | Open in Spotify
                         i.fa.fa-external-link.ml-1
             .row.mt-2
-              .col-lg-4.p-1
+              .col.p-1
                 b-button.btn-block(
                   @click="updatePlayerState(slotNumber)",
                   :disabled="!playbackDevice",
                   variant="primary"
                 )
                   i.fa.fa-stop-circle.fa-lg
-              .col-lg-4.p-1
+              .col.p-1
                 template(v-if="activeDevices.length > 1")
                   b-dropdown.btn-block(
                     split,
@@ -68,7 +68,7 @@ div
                     variant="success"
                   )
                     template(#button-content)
-                      i.fa.fa-play-circle.fa-lg
+                      i.fa.fa-play-circle.fa-lg.col
                     b-dropdown-item.disabled Start playback on:
                     b-dropdown-divider
                     b-dropdown-item(
@@ -82,7 +82,7 @@ div
                     variant="success"
                   )
                     i.fa.fa-play-circle.fa-lg
-              .col-lg-4.p-1
+              .col.p-1
                 b-button.btn-block(
                   @click="deletePlayerState(slotNumber)",
                   variant="danger"

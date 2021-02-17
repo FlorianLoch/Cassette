@@ -163,6 +163,7 @@ $footer-height: 7rem;
   $width: 7rem;
   $margin_page_edge: 2.5rem;
   position: fixed;
+  z-index: 100;
   width: $width;
   height: $width;
   bottom: $margin_page_edge;
