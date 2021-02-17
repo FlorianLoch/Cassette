@@ -165,7 +165,16 @@ export default {
         console.error("Failed to store new player state.", err)
       })
     },
-    deletePlayerState: function (slotNumber) {
+    deletePlayerState: async function (slotNumber) {
+      const ok = await this.$bvModal.msgBoxConfirm("Are you sure you want to delete this state? This cannot be undone.", {
+        okVariant: "danger",
+        okTitle: "Delete"
+      })
+
+      if (!ok) {
+        return
+      }
+
       this.$api.deletePlayerState(slotNumber).then(() => {
         console.info(`Successfully deleted player state in slot ${slotNumber}.`)
 
