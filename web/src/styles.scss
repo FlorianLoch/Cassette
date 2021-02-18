@@ -84,10 +84,14 @@ body {
   }
 }
 
-$footer-height: 7rem;
+$footer-height: 8rem;
 .footer {
   height: $footer-height;
   font-size: 1rem;
+
+  .build-info {
+    color: grey;
+  }
 }
 
 .page-content {

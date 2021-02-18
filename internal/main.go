@@ -44,9 +44,6 @@ type spotClientCreator func(token *oauth2.Token) spotify.SpotClient
 type m map[string]interface{}
 
 func RunInProduction() {
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout})
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
-
 	isDevMode := util.Env(constants.EnvENV, "") == "DEV"
 
 	networkInterface := util.Env(constants.EnvNetworkInterface, constants.DefaultNetworkInterface)

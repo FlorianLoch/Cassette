@@ -24,7 +24,8 @@
     p You can withdraw your consent at any time and may delete all data linked to you whenever you wish. You can also export it to have a look at the stored data linked to you. You can find the controls below. To get back here later please have a look at the bottom of the main web app once you gave your consent.
     p This service is provided by: Florian Loch (
       span#emailAddress
-      | ). Feel free to ask your questions about Cassette. Please report bugs and abuse.
+      | ).
+    p Feel free to ask your questions about Cassette. Please report bugs and abuse.
 
     .row.mx-auto
       template(v-if="$api.consentGiven()")

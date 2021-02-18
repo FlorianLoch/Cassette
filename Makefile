@@ -13,6 +13,10 @@ all_go_files = $(shell find . -type f -name '*.go')
 all_web_files = $(shell find ./web -path $(node_modules) -prune -false -o -path $(web_dist) -prune -false -o -type f -name '*')
 all_files = $(shell find . -path ./.make -prune -false -o -path $(node_modules) -prune -false -o -path $(web_dist) -prune -false -o -type f -name '*')
 
+git_version = $(shell git log -1 --format=%aI)
+git_author_date = $(shell git describe --always)
+build_date = $(shell date --iso-8601=seconds)
+
 install-hooks:
 	rm -f .git/hooks/pre-commit
 	ln -s ../../pre-commit.sh .git/hooks/pre-commit
@@ -67,7 +71,7 @@ build-web: $(web_dist) $(node_modules)
 # In case the content of web/node_modules changes a call to clean is therefore required.
 # The dir './web/node_modules' is added in order to force Make to first run 'yarn install' before trying to build the web app
 $(web_dist): $(node_modules) $(all_web_files)
-	yarn --cwd "./web" build
+	GIT_VERSION=$(git_version) GIT_AUTHOR_DATE=$(git_author_date) BUILD_DATE=$(build_date) yarn --cwd "./web" build
 	touch $(web_dist)
 
 $(node_modules): $(package_json)
@@ -75,12 +79,12 @@ $(node_modules): $(package_json)
 	touch $(node_modules)
 
 $(cassette_bin): $(all_go_files)
-	go build .
+	go build -ldflags "-X main.gitVersion=$(git_version) -X main.gitAuthorDate=$(git_author_date) -X main.buildDate=$(build_date)"
 
 docker-build: .make/docker-build
 
 .make/docker-build: $(all_files)
-	docker build . -t fdloch/cassette
+	docker build --build-arg GIT_VERSION=$(git_version) --build-arg GIT_AUTHOR_DATE=$(git_author_date) --build-arg BUILD_DATE=$(build_date) -t fdloch/cassette .
 	mkdir -p .make/ && touch .make/docker-build
 
 docker-run: .make/docker-build
