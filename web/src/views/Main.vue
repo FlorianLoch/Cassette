@@ -141,13 +141,15 @@ export default {
     },
     fetchPlayerStates: function () {
       this.$api.fetchPlayerStates().then((playerStates) => {
-        this.playerStates = playerStates
+        this.playerStates = playerStates.reverse()
       }, (err) => {
         this.showErrorMessage("Failed to request your player states.")
         console.error("Failed to request player states from backend.", err)
       })
     },
-    updatePlayerState: function (slotNumber) {
+    updatePlayerState: function (idx) {
+      const slotNumber = this.playerStates.length - 1 - idx
+
       this.$api.updatePlayerState(slotNumber).then(() => {
         console.info(`Successfully updated player state in slot ${slotNumber}.`)
         this.fetchPlayerStates()
@@ -165,7 +167,9 @@ export default {
         console.error("Failed to store new player state.", err)
       })
     },
-    deletePlayerState: async function (slotNumber) {
+    deletePlayerState: async function (idx) {
+      const slotNumber = this.playerStates.length - 1 - idx
+
       const ok = await this.$bvModal.msgBoxConfirm("Are you sure you want to delete this state? This cannot be undone.", {
         okVariant: "danger",
         okTitle: "Delete"
@@ -179,13 +183,16 @@ export default {
         console.info(`Successfully deleted player state in slot ${slotNumber}.`)
 
         // Avoid re-fetching the player states, we can compute the change locally
-        this.playerStates.splice(slotNumber, 1);
+        // The playerStates array is reversed - keep this in mind!
+        this.playerStates.splice(idx, 1);
       }, (err) => {
         this.showErrorMessage("Failed to delete the player state.")
         console.error(`Failed to delete player state in slot ${slotNumber}.`, err)
       })
     },
-    restoreFromPlayerState: function (slotNumber, deviceID, deviceName) {
+    restoreFromPlayerState: function (idx, deviceID, deviceName) {
+      const slotNumber = this.playerStates.length - 1 - idx
+
       this.$api.restoreFromPlayerState(slotNumber, deviceID).then(() => {
         console.info(`Successfully restored player state from slot ${slotNumber} on device ${deviceID}.`)
       }, (err) => {
