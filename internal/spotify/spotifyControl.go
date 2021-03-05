@@ -114,10 +114,6 @@ func CurrentPlayerState(client SpotClient) (*persistence.PlayerState, error) {
 	}, nil
 }
 
-func PausePlayer(client SpotClient) error {
-	return client.Pause()
-}
-
 func RestorePlayerState(client SpotClient, stateToLoad *persistence.PlayerState, deviceID string) error {
 	err := client.Shuffle(stateToLoad.ShuffleActivated)
 	if err != nil {

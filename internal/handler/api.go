@@ -91,7 +91,7 @@ func PlayerStatesPostHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = spotify.PausePlayer(spotifyClient)
+	err = spotifyClient.Pause()
 	if err != nil {
 		// No serious error, we do not need to tell the client
 		hlog.FromRequest(r).Debug().Err(err).Msg("Could not pause player.")
@@ -183,7 +183,7 @@ func PlayerStatesRestoreHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = spotify.PausePlayer(spotifyClient)
+	err = spotifyClient.Pause()
 	if err != nil {
 		// No serious error, we do not need to tell the client, he might notice anyway
 		hlog.FromRequest(r).Debug().Err(err).Msg("Could not pause player.")
