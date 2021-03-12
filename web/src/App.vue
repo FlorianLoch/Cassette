@@ -18,16 +18,3 @@
     p
       router-link(:to="{ name: 'Consent' }") Privacy policy / manage your data.
 </template>
-
-<script>
-export default {
-  name: "App",
-  beforeCreate: () => {
-    const gitVersion = process.env.GIT_VERSION
-    const gitAuthorDate = process.env.GIT_AUTHOR_DATE
-    const buildDate = process.env.BUILD_DATE
-
-    console.info(`UI based on git commit: ${gitVersion}, authored at ${gitAuthorDate}, built at ${buildDate}`)
-  }
-}
-</script>

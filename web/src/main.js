@@ -8,6 +8,12 @@ import { BVModalPlugin, DropdownPlugin, BButton, ProgressPlugin } from 'bootstra
 
 import './styles.scss'
 
+const gitVersion = process.env.GIT_VERSION
+const gitAuthorDate = process.env.GIT_AUTHOR_DATE
+const buildDate = process.env.BUILD_DATE
+
+console.info(`UI based on git commit: ${gitVersion}, authored at ${gitAuthorDate}, built at ${buildDate}`)
+
 axios.interceptors.request.use((config) => {
   NProgress.start()
   return config

@@ -8,11 +8,14 @@ div
         i.fa.fa-volume-up.mr-2
         | Currently playing on "{{ playbackDevice.name }}".
       .center-sm(v-else)
-        b-button.btn-lg(variant="warning", @click="fetchActiveDevices()") No playback on any device. Click&nbsp;to&nbsp;refresh.
+        b-button#fetch-active-devices-btn.btn-lg(
+          variant="warning",
+          @click="fetchActiveDevices()"
+        ) No playback on any device. Click&nbsp;to&nbsp;refresh.
 
   .container
     .row.mt-4
-      .col-lg-4.col-md-6(v-for="(state, slotNumber) in playerStates")
+      .slot-card.col-lg-4.col-md-6(v-for="(state, slotNumber) in playerStates")
         .card.mb-4.bg-light.box-shadow
           img.card-img-top(
             :src="state.albumArtLargeURL",
@@ -54,7 +57,7 @@ div
                         i.fa.fa-external-link.ml-1
             .row.mt-2
               .col.p-1
-                b-button.btn-block(
+                b-button.overwrite-btn.btn-block(
                   @click="updatePlayerState(slotNumber)",
                   :disabled="!playbackDevice",
                   variant="primary"
@@ -62,7 +65,7 @@ div
                   i.fa.fa-stop-circle.fa-lg
               .col.p-1
                 template(v-if="activeDevices.length > 1")
-                  b-dropdown.btn-block(
+                  b-dropdown.resume-btn.btn-block(
                     split,
                     @click="restoreFromPlayerState(slotNumber)",
                     variant="success"
@@ -77,25 +80,33 @@ div
                       :key="device.id"
                     ) {{ device.name }}
                 template(v-else)
-                  b-button.btn-block(
+                  b-button.resume-btn.btn-block(
                     @click="restoreFromPlayerState(slotNumber)",
                     variant="success"
                   )
                     i.fa.fa-play-circle.fa-lg
               .col.p-1
-                b-button.btn-block(
+                b-button.delete-btn.btn-block(
                   @click="deletePlayerState(slotNumber)",
                   variant="danger"
                 )
                   i.fa.fa-trash.fa-lg
-      a.floating-btn(@click="storePlayerState", :disabled="!playbackDevice")
+      a#suspend-btn.floating-btn(
+        @click="storePlayerState",
+        :disabled="!playbackDevice"
+      )
         i.fa.fa-pause-circle
   div
 </template>
 
 <script>
+import intro from "../lib/intro"
+
 export default {
   name: "Main",
+  props: [
+    "firstRun" // gets set by the router resp. the consent view
+  ],
   data: function () {
     return {
       playerStates: [],
@@ -122,7 +133,7 @@ export default {
       this.$bvModal.msgBoxOk("Oh no! " + msg)
     },
     fetchActiveDevices: function () {
-      this.$api.fetchActiveDevices().then((activeDevices) => {
+      return this.$api.fetchActiveDevices().then((activeDevices) => {
         this.activeDevices = activeDevices
         this.playbackDevice = undefined
         this.playbackDevicesInitiallyRequested = true
@@ -132,38 +143,70 @@ export default {
             this.playbackDevice = device
           }
         });
+
+        // It is save to call this every time - if the refresh button is shown triggering next is necessary,
+        // if it is not shown this code will not be called.
+        // If the intro is not shown, calling next() has no effect.
+        if (this.playbackDevice) {
+          intro.next()
+        }
       }, (err) => {
         this.playbackDevice = undefined
+        this.playbackDevicesInitiallyRequested = true
 
-        this.showErrorMessage("Failed to request active devices.")
+        this.showErrorMessage("Failed to request active devices. This should not happen. Please try again.")
         console.error("Failed to request actives devices from backend.", err)
       })
     },
-    fetchPlayerStates: function () {
-      this.$api.fetchPlayerStates().then((playerStates) => {
+    fetchPlayerStates: function (fetchActiveDevicesPromise) {
+      return this.$api.fetchPlayerStates().then(async (playerStates) => {
         this.playerStates = playerStates.reverse()
+
+        // TODO: if (this.playerStates.length === 0 && this.firstRun) {
+        if (this.firstRun) {
+          console.debug("This seems to be the first run of Cassette. Running the intro.")
+
+          if (fetchActiveDevicesPromise) {
+            await fetchActiveDevicesPromise
+          }
+
+          const activeDevicePresent = this.playbackDevice !== undefined
+          intro.start(activeDevicePresent)
+        }
       }, (err) => {
-        this.showErrorMessage("Failed to request your player states.")
+        this.showErrorMessage("Failed to request your player states. This should not happen. Please try again.")
         console.error("Failed to request player states from backend.", err)
       })
     },
     updatePlayerState: function (idx) {
       const slotNumber = this.playerStates.length - 1 - idx
 
-      this.$api.updatePlayerState(slotNumber).then(() => {
+      this.$api.updatePlayerState(slotNumber).then(async () => {
         console.info(`Successfully updated player state in slot ${slotNumber}.`)
-        this.fetchPlayerStates()
+
+        await this.fetchPlayerStates()
+
+        intro.next()
       }, (err) => {
-        this.showErrorMessage("Failed to update player state.")
+        this.showErrorMessage("Failed to update player state. This should not happen. Please try again.")
         console.error(`Failed to update player state in slot ${slotNumber}.`, err)
       })
     },
     storePlayerState: function () {
-      this.$api.storePlayerState().then(() => {
+      this.$api.storePlayerState().then(async () => {
         console.info("Successfully updated player state in new slot.")
-        this.fetchPlayerStates()
+
+        await this.fetchPlayerStates()
+
+        console.info("States fetched")
+
+        // We have to ensure the DOM element actually exists before progressing the tour
+        this.$nextTick(() => {
+          console.log(document.querySelector(".slot-card:first-of-type"))
+          intro.next()
+        })
       }, (err) => {
-        this.showErrorMessage("Failed to store new player state.")
+        this.showErrorMessage("Failed to store new player state. This should not happen. Please try again.")
         console.error("Failed to store new player state.", err)
       })
     },
@@ -186,7 +229,7 @@ export default {
         // The playerStates array is reversed - keep this in mind!
         this.playerStates.splice(idx, 1);
       }, (err) => {
-        this.showErrorMessage("Failed to delete the player state.")
+        this.showErrorMessage("Failed to delete the player state. This should not happen. Please try again.")
         console.error(`Failed to delete player state in slot ${slotNumber}.`, err)
       })
     },
@@ -195,6 +238,8 @@ export default {
 
       this.$api.restoreFromPlayerState(slotNumber, deviceID).then(() => {
         console.info(`Successfully restored player state from slot ${slotNumber} on device ${deviceID}.`)
+
+        intro.next()
       }, (err) => {
         this.showErrorMessage(`Failed to restore player state on ${(deviceName !== undefined) ? `"${deviceName}"` : "currently active device"}.
         Please make sure Spotify is active on this device. This can be done by starting some arbitrary track. Please try again then.
@@ -209,8 +254,7 @@ export default {
 
       this.$api.setCSRFToken(csrfToken)
 
-      this.fetchActiveDevices()
-      this.fetchPlayerStates()
+      this.fetchPlayerStates(this.fetchActiveDevices())
     }, (err) => {
       this.showErrorMessage("Failed initializing the app. Please reload the page.")
       console.error("Failed fetching the CSRF token.", err)
