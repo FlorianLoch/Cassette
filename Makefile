@@ -13,8 +13,8 @@ all_go_files = $(shell find . -type f -name '*.go')
 all_web_files = $(shell find ./web -path $(node_modules) -prune -false -o -path $(web_dist) -prune -false -o -type f -name '*')
 all_files = $(shell find . -path ./.make -prune -false -o -path $(node_modules) -prune -false -o -path $(web_dist) -prune -false -o -type f -name '*')
 
-git_version = $(shell git log -1 --format=%aI)
-git_author_date = $(shell git describe --always)
+git_version = $(shell git describe --always)
+git_author_date = $(shell git log -1 --format=%aI)
 build_date = $(shell date --iso-8601=seconds)
 
 install-hooks:

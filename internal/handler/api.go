@@ -19,20 +19,20 @@ func ActiveDevicesHandler(w http.ResponseWriter, r *http.Request) {
 	playerDevices, err := spotify.ActiveSpotifyDevices(spotifyClient)
 
 	if err != nil {
-		hlog.FromRequest(r).Debug().Err(err).Msg("Could not fetch list of active devices.")
+		hlog.FromRequest(r).Error().Err(err).Msg("Could not fetch list of active devices.")
 		http.Error(w, "Could not fetch list of active devices from Spotify!", http.StatusInternalServerError)
 	}
 
 	json, err := json.Marshal(playerDevices)
 	if err != nil {
-		hlog.FromRequest(r).Debug().
+		hlog.FromRequest(r).Error().
 			Err(err).Interface("playerDevices", playerDevices).
 			Msg("Could not serialize player devices.")
 		http.Error(w, "Could not fetch list of active devices from Spotify!", http.StatusInternalServerError)
 	}
 
 	if err != nil {
-		hlog.FromRequest(r).Debug().Err(err).Msg("Could not fetch list of active devices.")
+		hlog.FromRequest(r).Error().Err(err).Msg("Could not fetch list of active devices.")
 		http.Error(w, "Could not fetch list of active devices from Spotify!", http.StatusInternalServerError)
 	}
 
