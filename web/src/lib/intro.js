@@ -31,8 +31,8 @@ const Intro = function () {
     }
 
     tour.addStep({
-      title: "Welcome to Cassette!",
-      text: "Although Cassette is supposed to be easy to use this short introduction will give you some hints on how to use this tool. Feel free to skip if you prefer to find out yourself ;).",
+      title: "Welcome to Cassette! &#128526",
+      text: "Although Cassette is supposed to be easy to use this short introduction will give you some hints on how to use this tool. Feel free to skip if you prefer to find out yourself &#128521.<hr>",
       buttons: [{
         action: () => {
           tour.cancel()
@@ -51,7 +51,7 @@ const Intro = function () {
           on: "auto"
         },
         title: "Refresh active devices",
-        text: "It seems like there is no active device currently. Please make sure Spotify is currently playing (and not in offline mode). Sometimes the mobile app might require you to pause/unpause/skip in order to synchronize with Spotify's platform. This sometimes is a little buggy - and nothing Cassette could do about it.<hr>In order to continue with the tour please click the button."
+        text: "It seems like there is no active device currently. Please make sure Spotify is currently playing (and not in offline mode). Sometimes the mobile app might require you to pause/unpause/skip in order to synchronize with Spotify's platform. This sometimes is a little buggy - and nothing Cassette could do about it. &#128533<hr>In order to continue with the tour please click the big, yellow button."
       })
     }
 
@@ -70,7 +70,7 @@ const Intro = function () {
         on: "auto"
       },
       title: "Your first slot/state",
-      text: "We call this a slot, a place to store Spotify's player state into. The state stored in a slot can be resumed or overwritten. Of course you might also remove the slot.",
+      text: "We call this a slot, a place to store Spotify's player state into. The state stored in a slot can be resumed or overwritten. Of course you might also remove the slot.<hr>",
       buttons: [nextBtn]
     })
 
@@ -80,7 +80,7 @@ const Intro = function () {
         on: "auto"
       },
       title: "Your first slot/state",
-      text: "This bar indicates your progress within the current album/playlist. Especially handy with audiobooks. Don't worry if this looks just grey - just keep on listening.",
+      text: "This bar indicates your progress within the current album/playlist. Especially handy with audiobooks. Don't worry if this looks just grey - just keep on listening.<hr>",
       buttons: [nextBtn]
     })
 
@@ -108,7 +108,7 @@ const Intro = function () {
         on: "auto"
       },
       title: "Remove a slot",
-      text: "We reached the end of this interactive tour, feel free to remove this test slot. Have fun using Cassette!",
+      text: "We reached the end of this interactive tour, feel free to remove this test slot. Have fun using Cassette! &#128513<hr>",
       buttons: [{
         action: () => {
           tour.complete()

@@ -15,6 +15,26 @@ $danger: $english-red;
 @import "~bootstrap-vue/src/index.scss";
 
 @import "./shepherdjs.scss";
+.shepherd-has-title .shepherd-content .shepherd-header {
+  background-color: $nice-blue;
+}
+.shepherd-title {
+  color: $alabaster;
+}
+.shepherd-content {
+  background-color: $alabaster;
+}
+.shepherd-arrow:before {
+  background-color: $alabaster;
+  border: 2px solid $english-red;
+}
+.shepherd-cancel-icon {
+  color: $alabaster !important;
+}
+.shepherd-cancel-icon:hover {
+  color: $english-red !important;
+}
+
 
 // Import n-progress and customize it a little
 @import "~nprogress/nprogress.css";
@@ -86,7 +106,7 @@ body {
   }
 }
 
-$footer-height: 8rem;
+$footer-height: 10rem;
 .footer {
   height: $footer-height;
   font-size: 1rem;

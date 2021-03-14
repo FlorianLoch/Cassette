@@ -12,6 +12,7 @@
   visibility: hidden;
   width: 100%;
   z-index: 1030;
+  margin: 5px;
 }
 
 .shepherd-enabled.shepherd-element {
@@ -127,7 +128,7 @@
 }
 
 .shepherd-has-title .shepherd-content .shepherd-header {
-  background: #e6e6e6;
+  // background: #e6e6e6;
   padding: 1em;
 }
 
@@ -179,10 +180,10 @@
 }
 
 .shepherd-title {
-  color: rgba(0, 0, 0, 0.75);
+  // color: rgba(0, 0, 0, 0.75);
   display: flex;
-  font-size: 1rem;
-  font-weight: 400;
+  font-size: 1.2rem;
+  font-weight: 700;
   flex: 1 0 auto;
   margin: 0;
   padding: 0;

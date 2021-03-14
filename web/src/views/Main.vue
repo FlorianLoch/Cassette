@@ -104,9 +104,6 @@ import intro from "../lib/intro"
 
 export default {
   name: "Main",
-  props: [
-    "firstRun" // gets set by the router resp. the consent view
-  ],
   data: function () {
     return {
       playerStates: [],
@@ -114,7 +111,8 @@ export default {
       playbackDevice: undefined,
       activeDevices: [],
       showModal: false,
-      errorMessage: ""
+      errorMessage: "",
+      showHelp: false
     }
   },
   filters: {
@@ -162,8 +160,7 @@ export default {
       return this.$api.fetchPlayerStates().then(async (playerStates) => {
         this.playerStates = playerStates.reverse()
 
-        // TODO: if (this.playerStates.length === 0 && this.firstRun) {
-        if (this.firstRun) {
+        if (this.showHelp) {
           console.debug("This seems to be the first run of Cassette. Running the intro.")
 
           if (fetchActiveDevicesPromise) {
@@ -171,6 +168,10 @@ export default {
           }
 
           const activeDevicePresent = this.playbackDevice !== undefined
+
+          // Reset, otherwise subsequent calls to this method will retrigger the help
+          this.showHelp = false
+
           intro.start(activeDevicePresent)
         }
       }, (err) => {
@@ -249,6 +250,12 @@ export default {
     }
   },
   mounted: function () {
+    // Check whether this is the first run of Cassette - if so, we will show the help later
+    // We directly remove this query parameter then, otherwise it could end up in a bookmark,
+    // triggering the help to be shown every time
+    this.showHelp = this.$route.query.showHelp == "true"
+    this.$router.replace({name: "Main", query: {}})
+
     this.$api.fetchCSRFToken().then((csrfToken) => {
       console.info("Successfully fetched CSRF token.")
 

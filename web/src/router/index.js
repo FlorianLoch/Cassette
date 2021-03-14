@@ -9,8 +9,7 @@ const routes = [
   {
     path: '/',
     name: 'Main',
-    component: Main,
-    props: route => ({ firstRun: route.query.firstRun == "true" })
+    component: Main
   },
   {
     path: '/yourData',
