@@ -30,8 +30,24 @@ const API = function (options) {
 
   this.fetchPlayerStates = () => {
     return client.get(URL_PLAYER_STATES).then((res) => {
-      return res.data
+      return preparePlayerStates(res.data)
     })
+  }
+
+  // Sorts the states by LRU and adds the original index as slotNumber
+  function preparePlayerStates (rawPlayerStates) {
+    const cookedPlayerStates = rawPlayerStates.map((cur, idx) => {
+      return {
+        state: cur,
+        slotNumber: idx
+      }
+    })
+
+    cookedPlayerStates.sort((a, b) => {
+      return b.state.suspendedAtTs - a.state.suspendedAtTs
+    })
+
+    return cookedPlayerStates
   }
 
   this.updatePlayerState = (slotNumber) => {

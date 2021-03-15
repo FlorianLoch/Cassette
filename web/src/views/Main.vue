@@ -15,50 +15,50 @@ div
 
   .container
     .row.mt-4
-      .slot-card.col-lg-4.col-md-6(v-for="(state, slotNumber) in playerStates")
+      .slot-card.col-lg-4.col-md-6(v-for="item in playerStates" :key="item.slotNumber")
         .card.mb-4.bg-light.box-shadow
           img.card-img-top(
-            :src="state.albumArtLargeURL",
+            :src="item.state.albumArtLargeURL",
             alt="Album art provided by Spotify"
           )
-          b-progress(:max="state.totalTracks", variant="success")
-            b-progress-bar(:value="state.trackIndex")
+          b-progress(:max="item.state.totalTracks", variant="success")
+            b-progress-bar(:value="item.state.trackIndex")
           .card-body
             .card-content
-              h5.card-title {{ state.trackName }}
+              h5.card-title {{ item.state.trackName }}
               .info-table
-                .table-row(v-if="state.playlistName")
+                .table-row(v-if="item.state.playlistName")
                   .table-cell
                     i.fa.fa-list-ul
                   .table-cell
-                    p {{ state.playlistName }}
+                    p {{ item.state.playlistName }}
                 .table-row
                   .table-cell
                     i.fa.fa-music
                   .table-cell
-                    p {{ state.albumName }}
+                    p {{ item.state.albumName }}
                 .table-row
                   .table-cell
                     i.fa.fa-user
                   .table-cell
-                    p {{ state.artistName }}
+                    p {{ item.state.artistName }}
                 .table-row
                   .table-cell
                     i.fa.fa-hourglass-end
                   .table-cell
-                    p {{ state.progress | time }} / {{ state.duration | time }} (track {{ state.trackIndex }} of {{ state.totalTracks }})
+                    p {{ item.state.progress | time }} / {{ item.state.duration | time }} (track {{ item.state.trackIndex }} of {{ item.state.totalTracks }})
                 .table-row
                   .table-cell
                     i.fa.fa-spotify
                   .table-cell
                     p
-                      a(:href="state.linkToContext")
+                      a(:href="item.state.linkToContext")
                         | Open in Spotify
                         i.fa.fa-external-link.ml-1
             .row.mt-2
               .col.p-1
                 b-button.overwrite-btn.btn-block(
-                  @click="updatePlayerState(slotNumber)",
+                  @click="updatePlayerState(item.slotNumber)",
                   :disabled="!playbackDevice",
                   variant="primary"
                 )
@@ -67,7 +67,7 @@ div
                 template(v-if="activeDevices.length > 1")
                   b-dropdown.resume-btn.btn-block(
                     split,
-                    @click="restoreFromPlayerState(slotNumber)",
+                    @click="restoreFromPlayerState(item.slotNumber)",
                     variant="success"
                   )
                     template(#button-content)
@@ -76,23 +76,23 @@ div
                     b-dropdown-divider
                     b-dropdown-item(
                       v-for="device in activeDevices",
-                      @click="restoreFromPlayerState(slotNumber, device.id, device.name)",
+                      @click="restoreFromPlayerState(item.slotNumber, device.id, device.name)",
                       :key="device.id"
                     ) {{ device.name }}
                 template(v-else)
                   b-button.resume-btn.btn-block(
-                    @click="restoreFromPlayerState(slotNumber)",
+                    @click="restoreFromPlayerState(item.slotNumber)",
                     variant="success"
                   )
                     i.fa.fa-play-circle.fa-lg
               .col.p-1
                 b-button.delete-btn.btn-block(
-                  @click="deletePlayerState(slotNumber)",
+                  @click="deletePlayerState(item.slotNumber)",
                   variant="danger"
                 )
                   i.fa.fa-trash.fa-lg
       a#suspend-btn.floating-btn(
-        @click="storePlayerState",
+        @click="storePlayerState()",
         :disabled="!playbackDevice"
       )
         i.fa.fa-pause-circle
@@ -158,7 +158,7 @@ export default {
     },
     fetchPlayerStates: function (fetchActiveDevicesPromise) {
       return this.$api.fetchPlayerStates().then(async (playerStates) => {
-        this.playerStates = playerStates.reverse()
+        this.playerStates = playerStates
 
         if (this.showHelp) {
           console.debug("This seems to be the first run of Cassette. Running the intro.")
@@ -179,9 +179,7 @@ export default {
         console.error("Failed to request player states from backend.", err)
       })
     },
-    updatePlayerState: function (idx) {
-      const slotNumber = this.playerStates.length - 1 - idx
-
+    updatePlayerState: function (slotNumber) {
       this.$api.updatePlayerState(slotNumber).then(async () => {
         console.info(`Successfully updated player state in slot ${slotNumber}.`)
 
@@ -199,8 +197,6 @@ export default {
 
         await this.fetchPlayerStates()
 
-        console.info("States fetched")
-
         // We have to ensure the DOM element actually exists before progressing the tour
         this.$nextTick(() => {
           console.log(document.querySelector(".slot-card:first-of-type"))
@@ -211,9 +207,7 @@ export default {
         console.error("Failed to store new player state.", err)
       })
     },
-    deletePlayerState: async function (idx) {
-      const slotNumber = this.playerStates.length - 1 - idx
-
+    deletePlayerState: async function (slotNumber) {
       const ok = await this.$bvModal.msgBoxConfirm("Are you sure you want to delete this state? This cannot be undone.", {
         okVariant: "danger",
         okTitle: "Delete"
@@ -226,17 +220,13 @@ export default {
       this.$api.deletePlayerState(slotNumber).then(() => {
         console.info(`Successfully deleted player state in slot ${slotNumber}.`)
 
-        // Avoid re-fetching the player states, we can compute the change locally
-        // The playerStates array is reversed - keep this in mind!
-        this.playerStates.splice(idx, 1);
+        this.fetchPlayerStates()
       }, (err) => {
         this.showErrorMessage("Failed to delete the player state. This should not happen. Please try again.")
         console.error(`Failed to delete player state in slot ${slotNumber}.`, err)
       })
     },
-    restoreFromPlayerState: function (idx, deviceID, deviceName) {
-      const slotNumber = this.playerStates.length - 1 - idx
-
+    restoreFromPlayerState: function (slotNumber, deviceID, deviceName) {
       this.$api.restoreFromPlayerState(slotNumber, deviceID).then(() => {
         console.info(`Successfully restored player state from slot ${slotNumber} on device ${deviceID}.`)
 
@@ -253,8 +243,10 @@ export default {
     // Check whether this is the first run of Cassette - if so, we will show the help later
     // We directly remove this query parameter then, otherwise it could end up in a bookmark,
     // triggering the help to be shown every time
-    this.showHelp = this.$route.query.showHelp == "true"
-    this.$router.replace({name: "Main", query: {}})
+    if (this.$route.query.showHelp == "true") {
+      this.showHelp = true
+      this.$router.replace({name: "Main", query: {}})
+    }
 
     this.$api.fetchCSRFToken().then((csrfToken) => {
       console.info("Successfully fetched CSRF token.")
