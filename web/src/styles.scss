@@ -148,6 +148,10 @@ $footer-height: 10rem;
   // Adjust the progress bar of Vue Bootstrap a little
   border-radius: 0;
   height: 0.7rem;
+
+  & > div {
+    background-color: $red-violet !important;
+  }
 }
 
 .card-content {

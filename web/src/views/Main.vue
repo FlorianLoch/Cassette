@@ -52,7 +52,7 @@ div
                     i.fa.fa-spotify
                   .table-cell
                     p
-                      a(:href="item.state.linkToContext")
+                      a(:href="item.state.linkToContext" target="_blank")
                         | Open in Spotify
                         i.fa.fa-external-link.ml-1
             .row.mt-2
