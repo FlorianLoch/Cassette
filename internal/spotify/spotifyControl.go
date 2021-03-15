@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/rs/zerolog/log"
 	spotifyAPI "github.com/zmb3/spotify"
@@ -111,6 +112,7 @@ func CurrentPlayerState(client SpotClient) (*persistence.PlayerState, error) {
 		Progress:           currentlyPlaying.Progress,
 		Duration:           item.Duration,
 		ShuffleActivated:   shuffleActivated,
+		SuspendedAtTs:      time.Now().Unix(),
 	}, nil
 }
 

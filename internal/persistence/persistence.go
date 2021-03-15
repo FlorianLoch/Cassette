@@ -151,6 +151,7 @@ type PlayerState struct {
 	Progress           int    `json:"progress" bson:"progress"`
 	Duration           int    `json:"duration" bson:"duration"`
 	ShuffleActivated   bool   `json:"shuffleActivated" bson:"shuffleActivated"`
+	SuspendedAtTs      int64  `json:"suspendedAtTs" bson:"suspendedAtTs"`
 }
 
 type persistenceItem struct {
