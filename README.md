@@ -7,9 +7,11 @@
 
 An "audio book helper utility for Spotify&reg;".
 
+***Try it out at https://cassette.fdlo.ch.***
+
 Cassette is a small web application enabling you to pause and resume audiobooks on Spotify. Spotify offers a lot of great audiobooks but as its built with music in a broader sense in mind it does not provide essential features required in order to comfortably listen to them: pausing an audiobook and listening to some music results in you needing to think about in which chapter you left off.
 
-The common workaround is noting your progress down manually, e.g., as a text note or a screenshot. But there are severeal reasons why this is uncomfortable.
+The common workaround is noting your progress down manually, e.g., as a text note or a screenshot. But there are several reasons why this is uncomfortable.
 
 Cassette tries to overcome this problem by enabling you to store your state, put is aside and resume it later. Like you would have done it with a cassette in the old times.
 
@@ -19,12 +21,11 @@ Simply spoken by using the Spotify Web API. Cassette itself consists of two comp
 
 
 ## Current status of the project
-There has been a first version, basically a proof-of-concept for quite some time. I use it quite often and by the time I considered it quite useful and decided to rewrite the project in a more thorough fashion with the goal of making the tool available to everyone who wants to use it. Admittedly, this is also a play project for trying out stuff and a "finger exercise". ;)
+After spending a lot of time rewriting all parts of this project I finally was able to release version 2. Although version 1, which had another name that could not be kept as it violated Spotify's branding guidelines, was available to the public already it was not really too robust, not really intuitive to use and overall not meant to be used by anyone but myself. It was more kind of a proof-of-concept project hacked together in a few days.
 
-I am aware that, at its current state this project does not necessarily meet best standards in software development, e.g., there are not too many tests and some of the code is still in proof-of-concept state. But this is changing currently and hopefully will even more in the near future.
+Version 2 is way more mature, takes care of data privacy, includes an interactive introduction tour and and a polished UI with both mobile and desktop users in mind. Its goal is to be, hopefully, useful to many users aside myself.
 
-### Prototype
-Version 1 is currently deployed at Heroku (as a Docker container) and can be found at [spotistate.fdlo.ch](https://spotistate.fdlo.ch). Note that the prototype does not reflect the current state of this repository and still uses the old name, which could not be kept as it violates Spotify's branding guidelines.
+Version 2 is deployed at https://cassette.fdlo.ch.
 
 ## Disclaimer
 The authors of this project are not related to Spotify in any way beside being happy users of their platform. This service is not related to Spotify except using their API and content.
