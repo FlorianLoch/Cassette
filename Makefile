@@ -26,13 +26,17 @@ build-all: $(web_dist) $(cassette_bin)
 clean:
 	rm -rf $(web_dist)
 	rm -rf .make
-	rm $(cassette_bin)
+	rm $(cov_profile) || true
+	rm $(cassette_bin) || true
 
 run: build-all
 	CASSETTE_NETWORK_INTERFACE=localhost $(cassette_bin)
 
-lint: $(cassette_bin)
+lint: .make/go-lint
+
+.make/go-lint: $(cassette_bin)
 	golangci-lint run ./...
+	mkdir -p .make/ && touch .make/go-lint
 
 test:
 ifeq (, $(shell which richgo))
