@@ -230,7 +230,7 @@ $footer-height: 10rem;
 
   i {
     line-height: $width;
-    font-size: $width;
+    font-size: calc(#{$width} - 2rem);
     transition: transform 1s;
   }
 }

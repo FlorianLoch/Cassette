@@ -95,7 +95,7 @@ div
         @click="storePlayerState()",
         :disabled="!playbackDevice"
       )
-        i.fa.fa-pause-circle
+        i.fa.fa-floppy-o
   div
 </template>
 
