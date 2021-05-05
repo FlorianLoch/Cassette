@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	snippedFromIndexPage = "We're sorry but Cassette doesn't work properly without JavaScript enabled."
+	snippetFromIndexPage = "We're sorry but Cassette doesn't work properly without JavaScript enabled."
 	spotifyAuthURL       = "https://auth.spotify.com/some-redirect-url"
 	dummyUserID          = "audiophile_gopher"
 )
@@ -67,12 +67,12 @@ func TestConsentCheck(t *testing.T) {
 	r.Cookie(constants.CSRFCookieName).Value().NotEmpty()
 
 	// Requesting index we will always be served the web app until we provide a valid consent cookie
-	e.GET("/").Expect().Body().Contains(snippedFromIndexPage)
+	e.GET("/").Expect().Body().Contains(snippetFromIndexPage)
 
 	// Check whether an invalid consent cookie gets handled well
 	r = e.GET("/").WithCookie(constants.ConsentCookieName, "ancient cookie, tastes really bad").Expect()
 	r.Header(constants.ConsentNoticeHeaderName).Equal("ATTENTION: consent not given yet.")
-	r.Body().Contains(snippedFromIndexPage)
+	r.Body().Contains(snippetFromIndexPage)
 
 	// Now try again with a valid cookie and we should get forwarded to Spotify's auth service
 	cookieVal := validConsentCookieValue()
@@ -224,7 +224,7 @@ func login(t *testing.T, e *httpexpect.Expect, authMock *mocks.MockSpotAuthentic
 	// ... which should be the web app (SPA handler does not know 'initialRoute' and will serve default page)
 	r = e.GET("/initialRoute").Expect()
 	r.Status(http.StatusOK)
-	r.Body().Contains(snippedFromIndexPage)
+	r.Body().Contains(snippetFromIndexPage)
 
 	// Requesting the callback route again we should be forwarded to the entry page again
 	// because there is a token within our session

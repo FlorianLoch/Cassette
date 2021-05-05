@@ -45,7 +45,7 @@ lint: .make/go-lint
 	golangci-lint run ./...
 	mkdir -p .make/ && touch .make/go-lint
 
-test:
+test: $(web_dist) # web dist needs to be available for testing
 ifeq (, $(shell which richgo))
 	go test ./...
 else
@@ -95,11 +95,11 @@ $(cassette_bin): $(all_go_files)
 docker-build: .make/docker-build
 
 .make/docker-build: $(all_files)
-	docker build --build-arg GIT_VERSION=$(git_version) --build-arg GIT_AUTHOR_DATE=$(git_author_date) --build-arg BUILD_DATE=$(build_date) -t fdloch/cassette .
+	docker build -t fdloch/cassette .
 	mkdir -p .make/ && touch .make/docker-build
 
 docker-run: .make/docker-build
-	docker run --env-file ./.env --env CASSETTE_PORT=8080 --env CASSETTE_NETWORK_INTERFACE=0.0.0.0 --env CASSETTE_APP_URL=http://192.168.108.176:8080 -p 8080:8080 fdloch/cassette
+	docker run --env-file ./.env --env CASSETTE_PORT=8082 --env CASSETTE_NETWORK_INTERFACE=0.0.0.0 --env CASSETTE_APP_URL=http://192.168.108.176:8082 -p 8082:8082 fdloch/cassette
 
 heroku-init: .make/heroku-login
 
@@ -115,8 +115,7 @@ heroku-deploy-docker: .make/heroku-login
 
 dokku-deploy: .make/dokku-deploy
 
-.make/dokku-deploy: test .make/docker-build
-	docker tag fdloch/cassette:latest dokku/cassette:latest
-	docker save dokku/cassette:latest | ssh florian@vps.fdlo.ch "docker load"
-	ssh -t florian@vps.fdlo.ch "sudo dokku tags:deploy cassette latest"
+.make/dokku-deploy: test $(all_files)
+	-git remote add dokku dokku@vps.fdlo.ch:cassette
+	git push dokku main:master
 	touch .make/dokku-deploy
