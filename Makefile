@@ -17,6 +17,10 @@ git_version = $(shell git describe --always)
 git_author_date = $(shell git log -1 --format=%aI)
 build_date = $(shell date +%Y-%m-%dT%H:%M:%S%z)
 
+# Load the env file and export its variable to all programms invoked by make
+-include .env # - suppresses the error in case the file does not exist
+export
+
 install-hooks:
 	rm -f .git/hooks/pre-commit
 	ln -s ../../pre-commit.sh .git/hooks/pre-commit

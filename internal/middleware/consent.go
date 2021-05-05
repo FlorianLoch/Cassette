@@ -31,7 +31,13 @@ func CreateConsentMiddleware(spaHandler http.Handler) mux.MiddlewareFunc {
 			// For browsers it should make no difference as the user already created the cookie.
 			// But we need to set the path explicitly, otherwise multiple cookies will be set depending on the
 			// request route.
+			// By this the cookie also never invalidates (assuming this route gets requested once in its lifetime).
+			// ATTENTION: As the cookie is retrieved from the request it does not contain information like max-age.
+			// Therefore this has to be set again, otherwise max-age will be send set to 0 and therefore override
+			// the max-age of the cookie being present in the browser already.
 			cookie.Path = "/"
+			cookie.MaxAge = 10 * 60 * 60 * 24 * 365 // 10 years, keep this in sync with consent middleware in the frontend
+
 			http.SetCookie(w, cookie)
 
 			next.ServeHTTP(w, r)
@@ -40,7 +46,7 @@ func CreateConsentMiddleware(spaHandler http.Handler) mux.MiddlewareFunc {
 }
 
 func consentGiven(r *http.Request) (*http.Cookie, bool) {
-	var cookie, err = r.Cookie(constants.ConsentCookieName)
+	cookie, err := r.Cookie(constants.ConsentCookieName)
 	if err == http.ErrNoCookie {
 		hlog.FromRequest(r).Debug().Msg("User did not yet give her/his consent.")
 
@@ -54,7 +60,7 @@ func consentGiven(r *http.Request) (*http.Cookie, bool) {
 		return nil, false
 	}
 
-	var date = time.Unix(ts, 0).UTC()
+	date := time.Unix(ts, 0).UTC()
 	hlog.FromRequest(r).Debug().Msgf("User already gave her/his consent at '%s'.", date)
 
 	return cookie, true

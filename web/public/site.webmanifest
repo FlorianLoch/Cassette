@@ -21,7 +21,7 @@
   "theme_color": "#8c2f39",
   "background_color": "#efede6",
   "display": "fullscreen",
-  ​​"orientation": "portrait-primary",
+  "orientation": "portrait-primary",
   "prefer_related_applications": false,
   "scope": "/"
 }

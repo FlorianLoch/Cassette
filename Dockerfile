@@ -22,7 +22,7 @@ RUN yarn install
 COPY ./web .
 RUN yarn build
 
-FROM alpine
+FROM amd64/alpine
 RUN apk --no-cache add ca-certificates
 WORKDIR /app
 COPY ./CHECKS .
