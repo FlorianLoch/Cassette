@@ -1,6 +1,6 @@
 default: build-all
 
-.PHONY: build-all clean run test build-web docker-build docker-run heroku-deploy-docker heroku-init dokku-deploy coverage show-coverage lint install-hooks
+.PHONY: build-all clean run-server run test build-web docker-build docker-run heroku-deploy-docker heroku-init dokku-deploy coverage show-coverage lint install-hooks
 
 cassette_bin = ./cassette
 cov_profile = ./coverage.out
@@ -15,7 +15,7 @@ all_files = $(shell find . -path ./.make -prune -false -o -path $(node_modules) 
 
 git_version = $(shell git describe --always)
 git_author_date = $(shell git log -1 --format=%aI)
-build_date = $(shell date --iso-8601=seconds)
+build_date = $(shell date +%Y-%m-%dT%H:%M:%S%z)
 
 install-hooks:
 	rm -f .git/hooks/pre-commit
@@ -28,6 +28,9 @@ clean:
 	rm -rf .make
 	rm $(cov_profile) || true
 	rm $(cassette_bin) || true
+
+run-server: $(cassette_bin)
+	CASSETTE_NETWORK_INTERFACE=localhost $(cassette_bin)
 
 run: build-all
 	CASSETTE_NETWORK_INTERFACE=localhost $(cassette_bin)
