@@ -1,4 +1,4 @@
-name: build and test
+name: build, test and deploy
 
 on: [push, pull_request]
 
@@ -10,13 +10,10 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
-
     - name: Install yarn
       uses: actions/setup-node@v1
-
     - name: Install dependencies and build web app
       run: make build-web
-
     - name: Install golang
       uses: actions/setup-go@v2
       with:
@@ -27,12 +24,25 @@ jobs:
 
     - name: Run tests
       run: make coverage
-
     - name: Prepare coverage report
       uses: jandelgado/gcov2lcov-action@v1.0.5
-
     - name: Send coverage report
       uses: coverallsapp/github-action@v1.1.2
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         path-to-lcov: coverage.lcov
+
+  deploy:
+    # Only run this in case building and testing succeeded and the event is a push to master
+    if: "${{ github.event_name == 'push' && github.ref == 'refs/heads/master' }}"
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+    - name: Push to dokku
+      uses: dokku/github-action@v1.0.1
+      with:
+        git_push_flags: '--force'
+        git_remote_url: 'ssh://dokku@vps.fdlo.ch:22/cassette'
+        ssh_private_key: ${{ secrets.DOKKU_SSH_PRIVATE_KEY }}
