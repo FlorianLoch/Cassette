@@ -40,6 +40,8 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
+      with:
+        fetch-depth: 0 # do a full, so not a shallow, clone
     - name: Push to dokku
       uses: dokku/github-action@v1.0.1
       with:
