@@ -81,7 +81,8 @@ func RunInProduction() {
 
 	createSpotClient = func(token *oauth2.Token) spotify.SpotClient {
 		client := auth.NewClient(token)
-		return &client
+
+		return spotify.NewSpotClientWithRetry(&client, 2, 100*time.Millisecond)
 	}
 
 	cwd, err := os.Getwd()

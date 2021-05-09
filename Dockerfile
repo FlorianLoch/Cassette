@@ -21,7 +21,7 @@ COPY ./web/yarn.lock .
 RUN yarn install
 
 COPY ./web .
-# COPY .git/ .git/ TODO: Find a fix for this
+# COPY .git/ .git/ TODO: Find a fix for .git not being available in the dokku build context
 RUN GIT_VERSION=$(git describe --always) GIT_AUTHOR_DATE=$(git log -1 --format=%aI) BUILD_DATE=$(date +%Y-%m-%dT%H:%M:%S%z) yarn build
 
 FROM alpine
