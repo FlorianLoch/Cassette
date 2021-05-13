@@ -206,7 +206,7 @@ func login(t *testing.T, e *httpexpect.Expect, authMock *mocks.MockSpotAuthentic
 
 	// 'initialRoute' is simply used to check whether the middleware remembers where we wanted to go
 	// after having successfully authenticated
-	r := e.GET("/initialRoute").WithCookie(constants.ConsentCookieName, validConsentCookieValue()).Expect()
+	r := e.GET("/initialRoute?someParameter=someValue#someAnchor").WithCookie(constants.ConsentCookieName, validConsentCookieValue()).Expect()
 	r.Status(http.StatusTemporaryRedirect)
 	r.Header("Location").Equal(fmt.Sprintf("%s?state=%s", spotifyAuthURL, givenState))
 
@@ -219,7 +219,7 @@ func login(t *testing.T, e *httpexpect.Expect, authMock *mocks.MockSpotAuthentic
 	// With the valid state we expect to be forwarded to the initially requested route...
 	r = e.GET(constants.OAuthCallbackRoute).WithQuery("state", givenState).Expect()
 	r.Status(http.StatusTemporaryRedirect)
-	r.Header("Location").Equal("/initialRoute")
+	r.Header("Location").Equal("/initialRoute?someParameter=someValue#someAnchor")
 
 	// ... which should be the web app (SPA handler does not know 'initialRoute' and will serve default page)
 	r = e.GET("/initialRoute").Expect()

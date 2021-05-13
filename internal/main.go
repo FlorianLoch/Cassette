@@ -118,7 +118,8 @@ func SetupForTest(
 func setupAPI(webRoot string, isDevMode bool) http.Handler {
 	if isDevMode {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-		log.Debug().Msg("Running in DEV mode. Being more verbose. Set environment variable 'ENV' to 'DEV' to activate.")
+	} else {
+		log.Debug().Msg("Running in PROD mode. Being less verbose. Set environment variable 'ENV' to 'DEV' to activate.")
 	}
 
 	gob.Register(&spotifyAPI.PrivateUser{})

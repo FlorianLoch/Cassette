@@ -3,6 +3,8 @@ package middleware
 import (
 	"fmt"
 	"net/http"
+	"net/url"
+	"strings"
 
 	"github.com/gorilla/sessions"
 	"github.com/rs/zerolog/hlog"
@@ -47,7 +49,7 @@ func CreateSpotifyAuthMiddleware(auth spotify.SpotAuthenticator) (func(http.Hand
 
 			// Store the currently requested route in order to be able to forward the user after successful
 			// OAuth flow
-			session.Values[constants.SessionKeyInitiallyRequestedRoute] = r.URL.Path
+			session.Values[constants.SessionKeyInitiallyRequestedRoute] = stripURL(r.URL)
 			err = session.Save(r, w)
 			if err != nil {
 				// Should not happen, if it does randomState can also not be saved to session - therefore callback
@@ -62,6 +64,7 @@ func CreateSpotifyAuthMiddleware(auth spotify.SpotAuthenticator) (func(http.Hand
 	spotOAuthCBHandler := func(w http.ResponseWriter, r *http.Request) {
 		session := r.Context().Value(constants.FieldKeySession).(*sessions.Session)
 
+		// In case the client calls this route after having been authenticated successfully already
 		if _, ok := session.Values[constants.SessionKeySpotifyToken]; ok {
 			hlog.FromRequest(r).Debug().Msg("OAuth token already present. Forwarding to entry page.")
 
@@ -119,6 +122,9 @@ func CreateSpotifyAuthMiddleware(auth spotify.SpotAuthenticator) (func(http.Hand
 		}
 
 		hlog.FromRequest(r).Debug().Msg("Successfully initialized session.")
+		hlog.FromRequest(r).Debug().
+			Str("initallyRequestedRoute", initiallyRequestedRoute.(string)).
+			Msg("Redirecting to initially requested route.")
 
 		http.Redirect(w, r, initiallyRequestedRoute.(string), http.StatusTemporaryRedirect)
 	}
@@ -134,4 +140,22 @@ func generateRandomState() (string, error) {
 	}
 
 	return fmt.Sprintf("%x", randomSecret), nil
+}
+
+func stripURL(u *url.URL) string {
+	// Just to make sure this is a relative URL and we do not provide an open redirect
+	builder := strings.Builder{}
+	builder.WriteString(u.Path)
+
+	if len(u.RawQuery) > 0 {
+		builder.WriteRune('?')
+		builder.WriteString(u.RawQuery)
+	}
+
+	if len(u.RawFragment) > 0 {
+		builder.WriteRune('#')
+		builder.WriteString(u.RawFragment)
+	}
+
+	return builder.String()
 }
