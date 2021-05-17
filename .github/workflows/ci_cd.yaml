@@ -45,6 +45,6 @@ jobs:
     - name: Push to dokku
       uses: dokku/github-action@v1.0.1
       with:
-        git_push_flags: '--force'
-        git_remote_url: 'ssh://dokku@vps.fdlo.ch:22/cassette'
+        git_push_flags: "--force"
+        git_remote_url: "ssh://dokku@vps.fdlo.ch:22/cassette"
         ssh_private_key: ${{ secrets.DOKKU_SSH_PRIVATE_KEY }}
