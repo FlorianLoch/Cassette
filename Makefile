@@ -117,5 +117,5 @@ dokku-deploy: .make/dokku-deploy
 
 .make/dokku-deploy: test $(all_files)
 	-git remote add dokku dokku@vps.fdlo.ch:cassette
-	git push dokku main:master
+	git push dokku master
 	touch .make/dokku-deploy
