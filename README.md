@@ -27,5 +27,7 @@ Version 2 is way more mature, takes care of data privacy, includes an interactiv
 
 Version 2 is deployed at https://cassette.fdlo.ch.
 
+
+
 ## Disclaimer
 The authors of this project are not related to Spotify in any way beside being happy users of their platform. This service is not related to Spotify except using their API and content.
