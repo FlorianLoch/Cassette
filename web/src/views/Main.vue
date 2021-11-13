@@ -97,6 +97,14 @@ div
       )
         i.fa.fa-floppy-o
   div
+  b-modal(id="modal-lg", size="lg", title="Oh no!", v-model="modal.show")
+    template(#modal-footer="{ ok, cancel, hide }")
+      b-button(size="md", variant="primary", @click="modal.show = false") OK
+    p {{modal.msg}}
+    b-button.mt-3.mb-2(v-if="modal.additionalErrMsg != ''", v-b-toggle.collapse-additionalErrMsg, size="sm", variant="outline-dark") Show additional information
+    b-collapse#collapse-additionalErrMsg.mt-2
+      pre {{modal.additionalErrMsg}}
+
 </template>
 
 <script>
@@ -111,7 +119,11 @@ export default {
       playbackDevice: undefined,
       activeDevices: [],
       showModal: false,
-      errorMessage: "",
+      modal: {
+        show: false,
+        msg: "",
+        additionalErrMsg: ""
+      },
       showHelp: false
     }
   },
@@ -127,8 +139,24 @@ export default {
     }
   },
   methods: {
-    showErrorMessage: function (msg) {
-      this.$bvModal.msgBoxOk("Oh no! " + msg)
+    showErrorMessage: function (msg, additionalErr) {
+      this.modal.msg = msg
+      this.modal.additionalErrMsg = additionalErr
+
+      if (additionalErr.response) {
+        this.modal.additionalErrMsg = additionalErr.response.data
+      }
+
+      this.modal.show = true
+    },
+    logError: function (msg, err) {
+      if (err.response) {
+        console.error(msg, err.response.data, err)
+
+        return
+      }
+
+      console.error(msg, err)
     },
     fetchActiveDevices: function () {
       return this.$api.fetchActiveDevices().then((activeDevices) => {
@@ -152,8 +180,8 @@ export default {
         this.playbackDevice = undefined
         this.playbackDevicesInitiallyRequested = true
 
-        this.showErrorMessage("Failed to request active devices. This should not happen. Please try again.")
-        console.error("Failed to request actives devices from backend.", err)
+        this.showErrorMessage("Failed to request active devices. This should not happen. Please try again.", err)
+        this.logError("Failed to request actives devices from backend.", err)
       })
     },
     fetchPlayerStates: function (fetchActiveDevicesPromise) {
@@ -175,8 +203,8 @@ export default {
           intro.start(activeDevicePresent)
         }
       }, (err) => {
-        this.showErrorMessage("Failed to request your player states. This should not happen. Please try again.")
-        console.error("Failed to request player states from backend.", err)
+        this.showErrorMessage("Failed to request your player states. This should not happen. Please try again.", err)
+        this.logError("Failed to request player states from backend.", err)
       })
     },
     updatePlayerState: function (slotNumber) {
@@ -187,8 +215,8 @@ export default {
 
         intro.next()
       }, (err) => {
-        this.showErrorMessage("Failed to update player state. This should not happen. Please try again.")
-        console.error(`Failed to update player state in slot ${slotNumber}.`, err)
+        this.showErrorMessage("Failed to update player state. This should not happen. Please try again.", err)
+        this.logError(`Failed to update player state in slot ${slotNumber}.`, err)
       })
     },
     storePlayerState: function () {
@@ -203,8 +231,8 @@ export default {
           intro.next()
         })
       }, (err) => {
-        this.showErrorMessage("Failed to store new player state. This should not happen. Please try again.")
-        console.error("Failed to store new player state.", err)
+        this.showErrorMessage("Failed to store new player state. This should not happen. Please try again.", err)
+        this.logError("Failed to store new player state.", err)
       })
     },
     deletePlayerState: async function (slotNumber) {
@@ -222,8 +250,8 @@ export default {
 
         this.fetchPlayerStates()
       }, (err) => {
-        this.showErrorMessage("Failed to delete the player state. This should not happen. Please try again.")
-        console.error(`Failed to delete player state in slot ${slotNumber}.`, err)
+        this.showErrorMessage("Failed to delete the player state. This should not happen. Please try again.", err)
+        this.logError(`Failed to delete player state in slot ${slotNumber}.`, err)
       })
     },
     restoreFromPlayerState: function (slotNumber, deviceID, deviceName) {
@@ -234,8 +262,8 @@ export default {
       }, (err) => {
         this.showErrorMessage(`Failed to restore player state on ${(deviceName !== undefined) ? `"${deviceName}"` : "currently active device"}.
         Please make sure Spotify is active on this device. This can be done by starting some arbitrary track. Please try again then.
-        If the issue persists there might also be an issue with the specific track.`)
-        console.error(`Failed to restore player state from slot ${slotNumber} on device ${deviceID}.`, err)
+        If the issue persists there might also be an issue with the specific track.`, err)
+        this.logError(`Failed to restore player state from slot ${slotNumber} on device ${deviceID}.`, err)
       })
     }
   },
@@ -255,8 +283,8 @@ export default {
 
       this.fetchPlayerStates(this.fetchActiveDevices())
     }, (err) => {
-      this.showErrorMessage("Failed initializing the app. Please reload the page.")
-      console.error("Failed fetching the CSRF token.", err)
+      this.showErrorMessage("Failed initializing the app. Please reload the page.", err)
+      this.logError("Failed fetching the CSRF token.", err)
     })
   }
 }
