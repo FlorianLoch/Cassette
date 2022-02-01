@@ -9,6 +9,8 @@ $body-bg: $alabaster;
 $primary: $nice-blue;
 $danger: $english-red;
 
+@import "~font-awesome/css/font-awesome.min.css";
+
 // Import Bootstrap-Vue and Bootstrap
 // Then import Bootstrap an BootstrapVue SCSS files (order is important)
 @import "~bootstrap/scss/bootstrap.scss";
