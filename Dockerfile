@@ -11,6 +11,8 @@ RUN GOOS=linux GARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X main.gitVersion=$
 
 
 FROM node AS webbuilder
+# According to https://nodejs.org/en/blog/release/v17.0.0/
+ENV NODE_OPTIONS=--openssl-legacy-provider
 WORKDIR /build
 # We run the next three lines before copying ./web in order to avoid running 'yarn install' every time some file in ./web changes
 COPY ./web/package.json .

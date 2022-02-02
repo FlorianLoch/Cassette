@@ -11,7 +11,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
     - name: Install yarn
-      uses: actions/setup-node@v1
+      uses: actions/setup-node@v2
     - name: Install dependencies and build web app
       run: make build-web
     - name: Install golang
