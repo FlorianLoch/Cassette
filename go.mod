@@ -12,8 +12,8 @@ require (
 	github.com/gorilla/sessions v1.2.1
 	github.com/rs/zerolog v1.26.1
 	github.com/zmb3/spotify v1.3.0
-	go.mongodb.org/mongo-driver v1.8.3
-	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8
+	go.mongodb.org/mongo-driver v1.9.0
+	golang.org/x/oauth2 v0.0.0-20220411215720-9780585627b5
 )
 
 require (
@@ -47,9 +47,9 @@ require (
 	github.com/yudai/gojsondiff v1.0.0 // indirect
 	github.com/yudai/golcs v0.0.0-20170316035057-ecda9a501e82 // indirect
 	golang.org/x/crypto v0.0.0-20211215165025-cf75a172585e // indirect
-	golang.org/x/net v0.0.0-20210805182204-aaa1db679c0d // indirect
+	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
-	golang.org/x/text v0.3.6 // indirect
+	golang.org/x/text v0.3.7 // indirect
 	google.golang.org/appengine v1.6.6 // indirect
 	google.golang.org/protobuf v1.25.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
