@@ -1,6 +1,10 @@
 .env
-vendor/
 cassette
 **/.DS_Store
 .make/
 coverage.out
+
+node_modules/
+.idea/
+.vscode/
+static/
