@@ -134,6 +134,7 @@ func CreateSpotifyAuthMiddleware(auth spotify.SpotAuthenticator) (func(http.Hand
 
 func generateRandomState() (string, error) {
 	// This state is used during OAuth negotiation in order to prevent CSRF
+	// TODO: Make this undeterministic!
 	randomSecret, err := util.Make32ByteSecret("") // Returns a random secret
 	if err != nil {
 		return "", err

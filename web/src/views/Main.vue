@@ -111,181 +111,260 @@ div
 import intro from "../lib/intro"
 
 export default {
-  name: "Main",
-  data: function () {
-    return {
-      playerStates: [],
-      playbackDevicesInitiallyRequested: false,
-      playbackDevice: undefined,
-      activeDevices: [],
-      showModal: false,
-      modal: {
-        show: false,
-        msg: "",
-        additionalErrMsg: ""
-      },
-      showHelp: false
-    }
-  },
-  filters: {
-    time: function (millis) {
-      const inSecs = Math.round(millis / 1000)
-      const hours = Math.floor(inSecs / 3600)
-      const remaining = inSecs - hours * 3600
-      const minutes = Math.floor(remaining / 60)
-      const seconds = remaining - minutes * 60
+    name: "Main",
+    filters: {
+        time: function (millis) {
+            const inSecs = Math.round(millis / 1000)
+            const hours = Math.floor(inSecs / 3600)
+            const remaining = inSecs - hours * 3600
+            const minutes = Math.floor(remaining / 60)
+            const seconds = remaining - minutes * 60
 
-      return `${(hours > 0) ? hours + ":" : ""}${(minutes < 10) ? "0" : ""}${minutes}:${(seconds < 10) ? "0" : ""}${seconds}`
-    }
-  },
-  methods: {
-    showErrorMessage: function (msg, additionalErr) {
-      this.modal.msg = msg
-      this.modal.additionalErrMsg = additionalErr
-
-      if (additionalErr.response) {
-        this.modal.additionalErrMsg = additionalErr.response.data
-      }
-
-      this.modal.show = true
+            return `${hours > 0 ? hours + ":" : ""}${
+                minutes < 10 ? "0" : ""
+            }${minutes}:${seconds < 10 ? "0" : ""}${seconds}`
+        },
     },
-    logError: function (msg, err) {
-      if (err.response) {
-        console.error(msg, err.response.data, err)
-
-        return
-      }
-
-      console.error(msg, err)
-    },
-    fetchActiveDevices: function () {
-      return this.$api.fetchActiveDevices().then((activeDevices) => {
-        this.activeDevices = activeDevices
-        this.playbackDevice = undefined
-        this.playbackDevicesInitiallyRequested = true
-
-        activeDevices.forEach(device => {
-          if (device.active) {
-            this.playbackDevice = device
-          }
-        });
-
-        // It is save to call this every time - if the refresh button is shown triggering next is necessary,
-        // if it is not shown this code will not be called.
-        // If the intro is not shown, calling next() has no effect.
-        if (this.playbackDevice) {
-          intro.next()
+    data: function () {
+        return {
+            playerStates: [],
+            playbackDevicesInitiallyRequested: false,
+            playbackDevice: undefined,
+            activeDevices: [],
+            showModal: false,
+            modal: {
+                show: false,
+                msg: "",
+                additionalErrMsg: "",
+            },
+            showHelp: false,
         }
-      }, (err) => {
-        this.playbackDevice = undefined
-        this.playbackDevicesInitiallyRequested = true
-
-        this.showErrorMessage("Failed to request active devices. This should not happen. Please try again.", err)
-        this.logError("Failed to request actives devices from backend.", err)
-      })
     },
-    fetchPlayerStates: function (fetchActiveDevicesPromise) {
-      return this.$api.fetchPlayerStates().then(async (playerStates) => {
-        this.playerStates = playerStates
-
-        if (this.showHelp) {
-          console.debug("This seems to be the first run of Cassette. Running the intro.")
-
-          if (fetchActiveDevicesPromise) {
-            await fetchActiveDevicesPromise
-          }
-
-          const activeDevicePresent = this.playbackDevice !== undefined
-
-          // Reset, otherwise subsequent calls to this method will retrigger the help
-          this.showHelp = false
-
-          intro.start(activeDevicePresent)
+    mounted: function () {
+        // Check whether this is the first run of Cassette - if so, we will show the help later
+        // We directly remove this query parameter then, otherwise it could end up in a bookmark,
+        // triggering the help to be shown every time
+        if (this.$route.query.showHelp == "true") {
+            this.showHelp = true
+            this.$router.replace({ name: "Main", query: {} })
         }
-      }, (err) => {
-        this.showErrorMessage("Failed to request your player states. This should not happen. Please try again.", err)
-        this.logError("Failed to request player states from backend.", err)
-      })
+
+        this.$api.fetchCSRFToken().then(
+            (csrfToken) => {
+                console.info("Successfully fetched CSRF token.")
+
+                this.$api.setCSRFToken(csrfToken)
+
+                this.fetchPlayerStates(this.fetchActiveDevices())
+            },
+            (err) => {
+                this.showErrorMessage(
+                    "Failed initializing the app. Please reload the page.",
+                    err
+                )
+                this.logError("Failed fetching the CSRF token.", err)
+            }
+        )
     },
-    updatePlayerState: function (slotNumber) {
-      this.$api.updatePlayerState(slotNumber).then(async () => {
-        console.info(`Successfully updated player state in slot ${slotNumber}.`)
+    methods: {
+        showErrorMessage: function (msg, additionalErr) {
+            this.modal.msg = msg
+            this.modal.additionalErrMsg = additionalErr
 
-        await this.fetchPlayerStates()
+            if (additionalErr.response) {
+                this.modal.additionalErrMsg = additionalErr.response.data
+            }
 
-        intro.next()
-      }, (err) => {
-        this.showErrorMessage("Failed to update player state. This should not happen. Please try again.", err)
-        this.logError(`Failed to update player state in slot ${slotNumber}.`, err)
-      })
-    },
-    storePlayerState: function () {
-      this.$api.storePlayerState().then(async () => {
-        console.info("Successfully updated player state in new slot.")
+            this.modal.show = true
+        },
+        logError: function (msg, err) {
+            if (err.response) {
+                console.error(msg, err.response.data, err)
 
-        await this.fetchPlayerStates()
+                return
+            }
 
-        // We have to ensure the DOM element actually exists before progressing the tour
-        this.$nextTick(() => {
-          console.log(document.querySelector(".slot-card:first-of-type"))
-          intro.next()
-        })
-      }, (err) => {
-        this.showErrorMessage("Failed to store new player state. This should not happen. Please try again.", err)
-        this.logError("Failed to store new player state.", err)
-      })
-    },
-    deletePlayerState: async function (slotNumber) {
-      const ok = await this.$bvModal.msgBoxConfirm("Are you sure you want to delete this state? This cannot be undone.", {
-        okVariant: "danger",
-        okTitle: "Delete"
-      })
+            console.error(msg, err)
+        },
+        fetchActiveDevices: function () {
+            return this.$api.fetchActiveDevices().then(
+                (activeDevices) => {
+                    this.activeDevices = activeDevices
+                    this.playbackDevice = undefined
+                    this.playbackDevicesInitiallyRequested = true
 
-      if (!ok) {
-        return
-      }
+                    activeDevices.forEach((device) => {
+                        if (device.active) {
+                            this.playbackDevice = device
+                        }
+                    })
 
-      this.$api.deletePlayerState(slotNumber).then(() => {
-        console.info(`Successfully deleted player state in slot ${slotNumber}.`)
+                    // It is save to call this every time - if the refresh button is shown triggering next is necessary,
+                    // if it is not shown this code will not be called.
+                    // If the intro is not shown, calling next() has no effect.
+                    if (this.playbackDevice) {
+                        intro.next()
+                    }
+                },
+                (err) => {
+                    this.playbackDevice = undefined
+                    this.playbackDevicesInitiallyRequested = true
 
-        this.fetchPlayerStates()
-      }, (err) => {
-        this.showErrorMessage("Failed to delete the player state. This should not happen. Please try again.", err)
-        this.logError(`Failed to delete player state in slot ${slotNumber}.`, err)
-      })
-    },
-    restoreFromPlayerState: function (slotNumber, deviceID, deviceName) {
-      this.$api.restoreFromPlayerState(slotNumber, deviceID).then(() => {
-        console.info(`Successfully restored player state from slot ${slotNumber} on device ${deviceID}.`)
+                    this.showErrorMessage(
+                        "Failed to request active devices. This should not happen. Please try again.",
+                        err
+                    )
+                    this.logError(
+                        "Failed to request actives devices from backend.",
+                        err
+                    )
+                }
+            )
+        },
+        fetchPlayerStates: function (fetchActiveDevicesPromise) {
+            return this.$api.fetchPlayerStates().then(
+                async (playerStates) => {
+                    this.playerStates = playerStates
 
-        intro.next()
-      }, (err) => {
-        this.showErrorMessage(`Failed to restore player state on ${(deviceName !== undefined) ? `"${deviceName}"` : "currently active device"}.
+                    if (this.showHelp) {
+                        console.debug(
+                            "This seems to be the first run of Cassette. Running the intro."
+                        )
+
+                        if (fetchActiveDevicesPromise) {
+                            await fetchActiveDevicesPromise
+                        }
+
+                        const activeDevicePresent =
+                            this.playbackDevice !== undefined
+
+                        // Reset, otherwise subsequent calls to this method will retrigger the help
+                        this.showHelp = false
+
+                        intro.start(activeDevicePresent)
+                    }
+                },
+                (err) => {
+                    this.showErrorMessage(
+                        "Failed to request your player states. This should not happen. Please try again.",
+                        err
+                    )
+                    this.logError(
+                        "Failed to request player states from backend.",
+                        err
+                    )
+                }
+            )
+        },
+        updatePlayerState: function (slotNumber) {
+            this.$api.updatePlayerState(slotNumber).then(
+                async () => {
+                    console.info(
+                        `Successfully updated player state in slot ${slotNumber}.`
+                    )
+
+                    await this.fetchPlayerStates()
+
+                    intro.next()
+                },
+                (err) => {
+                    this.showErrorMessage(
+                        "Failed to update player state. This should not happen. Please try again.",
+                        err
+                    )
+                    this.logError(
+                        `Failed to update player state in slot ${slotNumber}.`,
+                        err
+                    )
+                }
+            )
+        },
+        storePlayerState: function () {
+            this.$api.storePlayerState().then(
+                async () => {
+                    console.info(
+                        "Successfully updated player state in new slot."
+                    )
+
+                    await this.fetchPlayerStates()
+
+                    // We have to ensure the DOM element actually exists before progressing the tour
+                    this.$nextTick(() => {
+                        console.log(
+                            document.querySelector(".slot-card:first-of-type")
+                        )
+                        intro.next()
+                    })
+                },
+                (err) => {
+                    this.showErrorMessage(
+                        "Failed to store new player state. This should not happen. Please try again.",
+                        err
+                    )
+                    this.logError("Failed to store new player state.", err)
+                }
+            )
+        },
+        deletePlayerState: async function (slotNumber) {
+            const ok = await this.$bvModal.msgBoxConfirm(
+                "Are you sure you want to delete this state? This cannot be undone.",
+                {
+                    okVariant: "danger",
+                    okTitle: "Delete",
+                }
+            )
+
+            if (!ok) {
+                return
+            }
+
+            this.$api.deletePlayerState(slotNumber).then(
+                () => {
+                    console.info(
+                        `Successfully deleted player state in slot ${slotNumber}.`
+                    )
+
+                    this.fetchPlayerStates()
+                },
+                (err) => {
+                    this.showErrorMessage(
+                        "Failed to delete the player state. This should not happen. Please try again.",
+                        err
+                    )
+                    this.logError(
+                        `Failed to delete player state in slot ${slotNumber}.`,
+                        err
+                    )
+                }
+            )
+        },
+        restoreFromPlayerState: function (slotNumber, deviceID, deviceName) {
+            this.$api.restoreFromPlayerState(slotNumber, deviceID).then(
+                () => {
+                    console.info(
+                        `Successfully restored player state from slot ${slotNumber} on device ${deviceID}.`
+                    )
+
+                    intro.next()
+                },
+                (err) => {
+                    this.showErrorMessage(
+                        `Failed to restore player state on ${
+                            deviceName !== undefined
+                                ? `"${deviceName}"`
+                                : "currently active device"
+                        }.
         Please make sure Spotify is active on this device. This can be done by starting some arbitrary track. Please try again then.
-        If the issue persists there might also be an issue with the specific track.`, err)
-        this.logError(`Failed to restore player state from slot ${slotNumber} on device ${deviceID}.`, err)
-      })
-    }
-  },
-  mounted: function () {
-    // Check whether this is the first run of Cassette - if so, we will show the help later
-    // We directly remove this query parameter then, otherwise it could end up in a bookmark,
-    // triggering the help to be shown every time
-    if (this.$route.query.showHelp == "true") {
-      this.showHelp = true
-      this.$router.replace({name: "Main", query: {}})
-    }
-
-    this.$api.fetchCSRFToken().then((csrfToken) => {
-      console.info("Successfully fetched CSRF token.")
-
-      this.$api.setCSRFToken(csrfToken)
-
-      this.fetchPlayerStates(this.fetchActiveDevices())
-    }, (err) => {
-      this.showErrorMessage("Failed initializing the app. Please reload the page.", err)
-      this.logError("Failed fetching the CSRF token.", err)
-    })
-  }
+        If the issue persists there might also be an issue with the specific track.`,
+                        err
+                    )
+                    this.logError(
+                        `Failed to restore player state from slot ${slotNumber} on device ${deviceID}.`,
+                        err
+                    )
+                }
+            )
+        },
+    },
 }
 </script>

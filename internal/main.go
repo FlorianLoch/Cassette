@@ -92,7 +92,7 @@ func RunInProduction() {
 	r := setupAPI(cwd, isDevMode)
 
 	interfacePort := networkInterface + ":" + port
-	log.Info().Msgf("Webserver started on %s", interfacePort)
+	log.Info().Msgf("Webserver started: http://%s", interfacePort)
 
 	err = http.ListenAndServe(interfacePort, r)
 	log.Fatal().Err(err).Msg("Server terminated.")

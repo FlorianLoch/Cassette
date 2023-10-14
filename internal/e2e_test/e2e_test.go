@@ -66,15 +66,15 @@ func TestConsentCheck(t *testing.T) {
 	r.Header(constants.CSRFHeaderName).NotEmpty()
 	r.Cookie(constants.CSRFCookieName).Value().NotEmpty()
 
-	// Requesting index we will always be served the web app until we provide a valid consent cookie
+	// Requests for index will always be served the web app until we provide a valid consent cookie
 	e.GET("/").Expect().Body().Contains(snippetFromIndexPage)
 
-	// Check whether an invalid consent cookie gets handled well
+	// Check whether an invalid consent cookie gets handled correctly
 	r = e.GET("/").WithCookie(constants.ConsentCookieName, "ancient cookie, tastes really bad").Expect()
 	r.Header(constants.ConsentNoticeHeaderName).Equal("ATTENTION: consent not given yet.")
 	r.Body().Contains(snippetFromIndexPage)
 
-	// Now try again with a valid cookie and we should get forwarded to Spotify's auth service
+	// Now try again with a valid cookie; we should get forwarded to Spotify's auth service
 	cookieVal := validConsentCookieValue()
 	r = e.GET("/").WithCookie(constants.ConsentCookieName, cookieVal).Expect()
 	r.Status(http.StatusTemporaryRedirect)
@@ -174,7 +174,7 @@ func beforeEach(t *testing.T) (*httpexpect.Expect, *gomock.Controller, *mocks.Mo
 	handler := main.SetupForTest(daoMock, authMock, spotClientMockCreator, webRoot)
 
 	e := httpexpect.WithConfig(httpexpect.Config{
-		BaseURL: "http://cassette.fdlo.ch",
+		BaseURL: "http://cassette-app.de",
 		Client: &http.Client{
 			Transport: httpexpect.NewBinder(handler),
 			Jar:       httpexpect.NewJar(),

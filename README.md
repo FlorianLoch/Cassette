@@ -7,7 +7,7 @@
 
 An "audio book helper utility for Spotify&reg;".
 
-***Try it out at https://cassette.fdlo.ch.***
+***Try it out at https://cassette-app.de.***
 
 Cassette is a small web application enabling you to pause and resume audiobooks on Spotify. Spotify offers a lot of great audiobooks but as its built with music in a broader sense in mind it does not provide essential features required in order to comfortably listen to them: pausing an audiobook and listening to some music results in you needing to think about in which chapter you left off.
 
@@ -25,7 +25,7 @@ After spending a lot of time rewriting all parts of this project I finally was a
 
 Version 2 is way more mature, takes care of data privacy, includes an interactive introduction tour and and a polished UI with both mobile and desktop users in mind. Its goal is to be, hopefully, useful to many users aside myself.
 
-Version 2 is deployed at https://cassette.fdlo.ch.
+Version 2 is deployed at https://cassette-app.de.
 
 
 
