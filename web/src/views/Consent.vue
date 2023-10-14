@@ -38,38 +38,46 @@
 
 <script>
 export default {
-  name: "Consent",
-  methods: {
-    goToApp: function () {
-      this.$router.push({ name: "Main" })
+    name: "Consent",
+    methods: {
+        goToApp: function () {
+            this.$router.push({ name: "Main" })
+        },
+        giveConsent: function () {
+            this.$api.giveConsent()
+
+            // We have to explicitly trigger the browser to reload the page in order
+            // for the Spotify OAuth redirect to kick in.
+            location.assign(`/?nocache=${new Date().getTime()}&showHelp=true`)
+        },
+        exportData: function () {
+            location.assign(this.$api.URL_DATA)
+        },
+        deleteData: function () {
+            this.$api
+                .fetchCSRFToken()
+                .then((csrfToken) => {
+                    this.$api.setCSRFToken(csrfToken)
+
+                    return this.$api.deleteYourData()
+                })
+                .then(
+                    () => {
+                        this.$api.withdrawConsent()
+
+                        this.$bvModal.msgBoxOk(
+                            "Your data has successfully been removed from the database! Due to technical reasons we can not enforce deletion of the data we stored in your browser. Please delete these cookies ('cassette_session' and 'cassette_csrf') manually resp. using your browser's tools."
+                        )
+                    },
+                    (err) => {
+                        this.$bvModal.msgBoxOk(
+                            "An error occurred. Did you already authorize Cassette via Spotify and actually save a state?"
+                        )
+
+                        console.error("Failed deleting user data.", err)
+                    }
+                )
+        },
     },
-    giveConsent: function () {
-      this.$api.giveConsent()
-
-      // We have to explicitly trigger the browser to reload the page in order
-      // for the Spotify OAuth redirect to kick in.
-      location.assign(`/?nocache=${new Date().getTime()}&showHelp=true`);
-    },
-    exportData: function () {
-      location.assign(this.$api.URL_DATA)
-    },
-    deleteData: function () {
-      this.$api.fetchCSRFToken().then((csrfToken) => {
-        this.$api.setCSRFToken(csrfToken)
-
-        return this.$api.deleteYourData()
-      }).then(() => {
-        this.$api.withdrawConsent()
-
-        this.$bvModal.msgBoxOk("Your data has successfully been removed from the database! Due to technical reasons we can not enforce deletion of the data we stored in your browser. Please delete these cookies ('cassette_session' and 'cassette_csrf') manually resp. using your browser's tools.")
-      }, (err) => {
-        this.$bvModal.msgBoxOk("An error occurred. Did you already authorize Cassette via Spotify and actually save a state?")
-
-        console.error("Failed deleting user data.", err)
-      })
-    }
-  }
 }
 </script>
-
-

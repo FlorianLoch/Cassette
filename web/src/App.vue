@@ -8,7 +8,7 @@
     keep-alive
       router-view
   .footer.p-3.text-center
-    p(v-if="$route.name == 'Main'")
+    p(v-if="$route.name === 'Main'")
       a(href="/?showHelp=true") Show help
     p
       | Content provided by Spotify&reg;.

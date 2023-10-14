@@ -82,7 +82,7 @@ build-web: $(web_dist) $(node_modules)
 # In case the content of web/node_modules changes a call to clean is therefore required.
 # The dir './web/node_modules' is added in order to force Make to first run 'yarn install' before trying to build the web app
 $(web_dist): $(node_modules) $(all_web_files)
-	cd ./web;	GIT_VERSION=$(git_version) GIT_AUTHOR_DATE=$(git_author_date) BUILD_DATE=$(build_date) yarn build
+	cd ./web; GIT_VERSION=$(git_version) GIT_AUTHOR_DATE=$(git_author_date) BUILD_DATE=$(build_date) yarn build
 	touch $(web_dist)
 
 $(node_modules): $(package_json)
