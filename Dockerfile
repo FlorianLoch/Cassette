@@ -1,6 +1,6 @@
 # Version of golang image should be the same as used in Github CI
 # We cannot use the alpine image anymore because we need to invoke `git` to fill the build args
-FROM golang:1.19.0 AS gobuilder
+FROM golang:1.21.3 AS gobuilder
 WORKDIR /src/github.com/florianloch/cassette
 # We run the next three lines before copying the workspace in order to avoid having Go download all modules everytime somethings changes
 COPY go.mod .
