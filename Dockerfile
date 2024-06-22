@@ -10,9 +10,10 @@ COPY . .
 RUN GOOS=linux GARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X main.gitVersion=$(git describe --always) -X main.gitAuthorDate=$(git log -1 --format=%aI) -X main.buildDate=$(date +%Y-%m-%dT%H:%M:%S%z)"
 
 
-FROM node AS webbuilder
-# According to https://nodejs.org/en/blog/release/v17.0.0/
-ENV NODE_OPTIONS=--openssl-legacy-provider
+FROM node:22-alpine3.19 AS webbuilder
+RUN apk --no-cache add git
+RUN corepack enable
+RUN corepack install --global yarn@3.4.1
 WORKDIR /build
 # We run the next three lines before copying ./web in order to avoid running 'yarn install' every time some file in ./web changes
 COPY ./web/package.json .
