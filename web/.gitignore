@@ -2,7 +2,6 @@
 node_modules
 /dist
 
-
 # local env files
 .env.local
 .env.*.local
@@ -22,4 +21,7 @@ pnpm-debug.log*
 *.sln
 *.sw?
 
-.yarn
+.yarn/*
+!.yarn/releases
+!.yarn/plugins
+.pnp.*

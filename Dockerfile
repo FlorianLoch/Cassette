@@ -13,14 +13,13 @@ RUN GOOS=linux GARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X main.gitVersion=$
 FROM node:22-alpine3.19 AS webbuilder
 RUN apk --no-cache add git
 RUN corepack enable
-RUN corepack install --global yarn@3.4.1
+RUN corepack prepare yarn@3.4.1 --activate
 WORKDIR /build
-# We run the next three lines before copying ./web in order to avoid running 'yarn install' every time some file in ./web changes
 COPY ./web/package.json .
 COPY ./web/yarn.lock .
+COPY ./web .
 RUN yarn install
 
-COPY ./web .
 COPY .git/ .git/
 RUN GIT_VERSION=$(git describe --always) GIT_AUTHOR_DATE=$(git log -1 --format=%aI) BUILD_DATE=$(date +%Y-%m-%dT%H:%M:%S%z) yarn build
 
