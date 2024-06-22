@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 	"time"
@@ -26,14 +27,14 @@ func CreateConsentMiddleware(spaHandler http.Handler) mux.MiddlewareFunc {
 				return
 			}
 
-			// To make testing easier we send the cookie back once we received it.
-			// By this the client will be able to put the cookie in its jar.
-			// For browsers it should make no difference as the user already created the cookie.
+			// To make testing easier, we send the cookie back once we received it.
+			// By this, the client will be able to put the cookie in its jar.
+			// For browsers, it should make no difference as the user already created the cookie.
 			// But we need to set the path explicitly, otherwise multiple cookies will be set depending on the
 			// request route.
-			// By this the cookie also never invalidates (assuming this route gets requested once in its lifetime).
-			// ATTENTION: As the cookie is retrieved from the request it does not contain information like max-age.
-			// Therefore this has to be set again, otherwise max-age will be send set to 0 and therefore override
+			// By this, the cookie also never invalidates (assuming this route gets requested once in its lifetime).
+			// ATTENTION: As the cookie is retrieved from the request, it does not contain information like max-age.
+			// Therefore, this has to be set again, otherwise max-age will be set to 0 and therefore override
 			// the max-age of the cookie being present in the browser already.
 			cookie.Path = "/"
 			cookie.MaxAge = 10 * 60 * 60 * 24 * 365 // 10 years, keep this in sync with consent middleware in the frontend
@@ -47,7 +48,7 @@ func CreateConsentMiddleware(spaHandler http.Handler) mux.MiddlewareFunc {
 
 func consentGiven(r *http.Request) (*http.Cookie, bool) {
 	cookie, err := r.Cookie(constants.ConsentCookieName)
-	if err == http.ErrNoCookie {
+	if errors.Is(err, http.ErrNoCookie) {
 		hlog.FromRequest(r).Debug().Msg("User did not yet give her/his consent.")
 
 		return nil, false

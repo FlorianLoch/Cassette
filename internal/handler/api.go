@@ -23,7 +23,7 @@ func ActiveDevicesHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Could not fetch list of active devices from Spotify!", http.StatusInternalServerError)
 	}
 
-	json, err := json.Marshal(playerDevices)
+	jsonBytes, err := json.Marshal(playerDevices)
 	if err != nil {
 		hlog.FromRequest(r).Error().
 			Err(err).Interface("playerDevices", playerDevices).
@@ -36,7 +36,7 @@ func ActiveDevicesHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Could not fetch list of active devices from Spotify!", http.StatusInternalServerError)
 	}
 
-	respondWithJSON(w, r, json)
+	respondWithJSON(w, r, jsonBytes)
 }
 
 func PlayerStatesPostHandler(w http.ResponseWriter, r *http.Request) {

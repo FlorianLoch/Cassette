@@ -71,17 +71,20 @@ func TestConsentCheck(t *testing.T) {
 
 	// Check whether an invalid consent cookie gets handled correctly
 	r = e.GET("/").WithCookie(constants.ConsentCookieName, "ancient cookie, tastes really bad").Expect()
-	r.Header(constants.ConsentNoticeHeaderName).Equal("ATTENTION: consent not given yet.")
+	r.Header(constants.ConsentNoticeHeaderName).IsEqual("ATTENTION: consent not given yet.")
 	r.Body().Contains(snippetFromIndexPage)
 
 	// Now try again with a valid cookie; we should get forwarded to Spotify's auth service
 	cookieVal := validConsentCookieValue()
-	r = e.GET("/").WithCookie(constants.ConsentCookieName, cookieVal).Expect()
+	r = e.GET("/").
+		WithRedirectPolicy(httpexpect.DontFollowRedirects).
+		WithCookie(constants.ConsentCookieName, cookieVal).
+		Expect()
 	r.Status(http.StatusTemporaryRedirect)
-	r.Header("Location").Equal(spotifyAuthURL)
+	r.Header("Location").IsEqual(spotifyAuthURL)
 	// Server should send back the consent cookie, this is helpful as we do not
 	// have to attach it every time - httpexpect puts it into its cookie jar
-	r.Cookie(constants.ConsentCookieName).Value().Equal(cookieVal)
+	r.Cookie(constants.ConsentCookieName).Value().IsEqual(cookieVal)
 }
 
 func TestRetrievalOfPlayerStates(t *testing.T) {
@@ -98,11 +101,11 @@ func TestRetrievalOfPlayerStates(t *testing.T) {
 
 	r := e.GET("/api/playerStates").Expect()
 	r.Status(http.StatusOK)
-	r.ContentType("application/json")
+	r.HasContentType("application/json")
 	a := r.JSON().Array()
-	a.Length().Equal(2)
-	a.Element(0).Object().Value("albumName").String().Equal("book 1")
-	a.Element(1).Object().Value("albumName").String().Equal("book 2")
+	a.Length().IsEqual(2)
+	a.Value(0).Object().Value("albumName").String().IsEqual("book 1")
+	a.Value(1).Object().Value("albumName").String().IsEqual("book 2")
 }
 
 func TestRetrievalOfActiveDevices(t *testing.T) {
@@ -115,14 +118,14 @@ func TestRetrievalOfActiveDevices(t *testing.T) {
 
 	r := e.GET("/api/activeDevices").Expect()
 	r.Status(http.StatusOK)
-	r.ContentType("application/json")
+	r.HasContentType("application/json")
 	a := r.JSON().Array()
-	a.Length().Equal(2)
-	o1 := a.Element(0).Object()
-	o1.Value("name").String().Equal("Device 1")
+	a.Length().IsEqual(2)
+	o1 := a.Value(0).Object()
+	o1.Value("name").String().IsEqual("Device 1")
 	o1.Value("active").Boolean().False()
-	o2 := a.Element(1).Object()
-	o2.Value("name").String().Equal("Device 2")
+	o2 := a.Value(1).Object()
+	o2.Value("name").String().IsEqual("Device 2")
 	o2.Value("active").Boolean().True()
 }
 
@@ -177,7 +180,7 @@ func beforeEach(t *testing.T) (*httpexpect.Expect, *gomock.Controller, *mocks.Mo
 		BaseURL: "http://cassette-app.de",
 		Client: &http.Client{
 			Transport: httpexpect.NewBinder(handler),
-			Jar:       httpexpect.NewJar(),
+			Jar:       httpexpect.NewCookieJar(),
 		},
 		Reporter: httpexpect.NewAssertReporter(t),
 		Printers: []httpexpect.Printer{
@@ -206,9 +209,12 @@ func login(t *testing.T, e *httpexpect.Expect, authMock *mocks.MockSpotAuthentic
 
 	// 'initialRoute' is simply used to check whether the middleware remembers where we wanted to go
 	// after having successfully authenticated
-	r := e.GET("/initialRoute?someParameter=someValue#someAnchor").WithCookie(constants.ConsentCookieName, validConsentCookieValue()).Expect()
+	r := e.GET("/initialRoute?someParameter=someValue#someAnchor").
+		WithRedirectPolicy(httpexpect.DontFollowRedirects).
+		WithCookie(constants.ConsentCookieName, validConsentCookieValue()).
+		Expect()
 	r.Status(http.StatusTemporaryRedirect)
-	r.Header("Location").Equal(fmt.Sprintf("%s?state=%s", spotifyAuthURL, givenState))
+	r.Header("Location").IsEqual(fmt.Sprintf("%s?state=%s", spotifyAuthURL, givenState))
 
 	// We assume Spotify lets us in by simulating their callback
 	// First with invalid state, then with valid one
@@ -216,21 +222,21 @@ func login(t *testing.T, e *httpexpect.Expect, authMock *mocks.MockSpotAuthentic
 	r.Status(http.StatusBadRequest)
 	r.Body().Contains("State mismatch in OAuth callback")
 
-	// With the valid state we expect to be forwarded to the initially requested route...
-	r = e.GET(constants.OAuthCallbackRoute).WithQuery("state", givenState).Expect()
+	// With the valid state, we expect to be forwarded to the initially requested route...
+	r = e.GET(constants.OAuthCallbackRoute).WithRedirectPolicy(httpexpect.DontFollowRedirects).WithQuery("state", givenState).Expect()
 	r.Status(http.StatusTemporaryRedirect)
-	r.Header("Location").Equal("/initialRoute?someParameter=someValue#someAnchor")
+	r.Header("Location").IsEqual("/initialRoute?someParameter=someValue#someAnchor")
 
 	// ... which should be the web app (SPA handler does not know 'initialRoute' and will serve default page)
 	r = e.GET("/initialRoute").Expect()
 	r.Status(http.StatusOK)
 	r.Body().Contains(snippetFromIndexPage)
 
-	// Requesting the callback route again we should be forwarded to the entry page again
+	// Requesting the callback route again, we should be forwarded to the entry page again
 	// because there is a token within our session
-	r = e.GET(constants.OAuthCallbackRoute).Expect()
+	r = e.GET(constants.OAuthCallbackRoute).WithRedirectPolicy(httpexpect.DontFollowRedirects).Expect()
 	r.Status(http.StatusTemporaryRedirect)
-	r.Header("Location").Equal("/")
+	r.Header("Location").IsEqual("/")
 }
 
 type pointerMatcher struct {
