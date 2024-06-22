@@ -101,21 +101,9 @@ docker-build: .make/docker-build
 docker-run: .make/docker-build
 	docker run --env-file ./.env --env CASSETTE_PORT=8082 --env CASSETTE_NETWORK_INTERFACE=0.0.0.0 --env CASSETTE_APP_URL=http://192.168.108.176:8082 -p 8082:8082 fdloch/cassette
 
-heroku-init: .make/heroku-login
-
-heroku-deploy-docker: .make/heroku-login
-	heroku container:login
-	heroku container:push web
-	heroku container:release web
-
-.make/heroku-login:
-	heroku login
-	heroku git:remote -a audio-book-helper-for-spotify
-	mkdir -p .make/ && touch .make/heroku-login
-
 dokku-deploy: .make/dokku-deploy
 
 .make/dokku-deploy: test $(all_files)
 	-git remote add dokku dokku@vps.fdlo.ch:cassette
-	git push dokku master
+	git push --force dokku
 	touch .make/dokku-deploy
