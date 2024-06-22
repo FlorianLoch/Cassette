@@ -306,12 +306,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@babel/parser@npm:^7.18.4, @babel/parser@npm:^7.22.15, @babel/parser@npm:^7.6.0, @babel/parser@npm:^7.9.6":
+"@babel/parser@npm:^7.22.15, @babel/parser@npm:^7.6.0, @babel/parser@npm:^7.9.6":
   version: 7.22.16
   resolution: "@babel/parser@npm:7.22.16"
   bin:
     parser: ./bin/babel-parser.js
   checksum: 944c756b5bdeb07b9fec16ecef6b3c61aff9d4c4b924abadcf01afa1840a740b8e2357ae00482b5b37daad6d2bfd848c947f27ad65138d687b6fdc924bc59edd
+  languageName: node
+  linkType: hard
+
+"@babel/parser@npm:^7.23.5":
+  version: 7.24.7
+  resolution: "@babel/parser@npm:7.24.7"
+  bin:
+    parser: ./bin/babel-parser.js
+  checksum: fc9d2c4c8712f89672edc55c0dc5cf640dcec715b56480f111f85c2bc1d507e251596e4110d65796690a96ac37a4b60432af90b3e97bb47e69d4ef83872dbbd6
   languageName: node
   linkType: hard
 
@@ -1341,14 +1350,18 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@vue/compiler-sfc@npm:2.7.14":
-  version: 2.7.14
-  resolution: "@vue/compiler-sfc@npm:2.7.14"
+"@vue/compiler-sfc@npm:2.7.16":
+  version: 2.7.16
+  resolution: "@vue/compiler-sfc@npm:2.7.16"
   dependencies:
-    "@babel/parser": ^7.18.4
+    "@babel/parser": ^7.23.5
     postcss: ^8.4.14
+    prettier: ^1.18.2 || ^2.0.0
     source-map: ^0.6.1
-  checksum: 25e00abaecb311f1effbf539bc3e4fdeedb39d35f9c2947b2640187a047e6a7400e693fd7da1d3a98977b9078c5bf629ca47f8b9a59dc14a080c0a1e1dd06a49
+  dependenciesMeta:
+    prettier:
+      optional: true
+  checksum: cf3e498ff01f0876769fa0ec2fc679f18238c42b96ee19744cca94b0b0d0c25c274e7fcad536dab3efb4aad48558219dba861c3937d06d9d91d55be368747097
   languageName: node
   linkType: hard
 
@@ -1780,10 +1793,10 @@ __metadata:
     vite-plugin-html-resolve-alias: ^1.0.3
     vite-plugin-sass: ^0.1.0
     vite-plugin-vue2: ^2.0.3
-    vue: ^2.7.14
-    vue-eslint-parser: ^9.3.2
+    vue: ^2.7.16
+    vue-eslint-parser: ^9.4.3
     vue-router: ^3.6.5
-    vue-template-compiler: ^2.7.14
+    vue-template-compiler: ^2.7.16
   languageName: unknown
   linkType: soft
 
@@ -4864,24 +4877,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"vue-eslint-parser@npm:^9.3.2":
-  version: 9.3.2
-  resolution: "vue-eslint-parser@npm:9.3.2"
-  dependencies:
-    debug: ^4.3.4
-    eslint-scope: ^7.1.1
-    eslint-visitor-keys: ^3.3.0
-    espree: ^9.3.1
-    esquery: ^1.4.0
-    lodash: ^4.17.21
-    semver: ^7.3.6
-  peerDependencies:
-    eslint: ">=6.0.0"
-  checksum: f55056fcd94b6c9d4e940616294f72fb20ae9561a23bc2d7f32499307db7af128dc84d8c43cb8c1a267e0c5d34fc61a9215656a5ea7413df4f58eec81175c6ad
-  languageName: node
-  linkType: hard
-
-"vue-eslint-parser@npm:^9.4.2":
+"vue-eslint-parser@npm:^9.4.2, vue-eslint-parser@npm:^9.4.3":
   version: 9.4.3
   resolution: "vue-eslint-parser@npm:9.4.3"
   dependencies:
@@ -4934,13 +4930,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"vue-template-compiler@npm:^2.7.14":
-  version: 2.7.14
-  resolution: "vue-template-compiler@npm:2.7.14"
+"vue-template-compiler@npm:^2.7.16":
+  version: 2.7.16
+  resolution: "vue-template-compiler@npm:2.7.16"
   dependencies:
     de-indent: ^1.0.2
     he: ^1.2.0
-  checksum: eba9d2eed6b7110c963bc356b47bdd11d4023d25148abb7e5f7826db2fefe7ad8a575787ee0d8fa47701d44a6f54bde475279b1319f44e1049271eb2419f93a7
+  checksum: a0d52ecbb99bad37f370341b5c594c5caa1f72b15b3f225148ef378fc06aa25c93185ef061f7e6e5e443c9067e70d8f158742716112acf84088932ebcc49ad10
   languageName: node
   linkType: hard
 
@@ -4951,13 +4947,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"vue@npm:^2.7.14":
-  version: 2.7.14
-  resolution: "vue@npm:2.7.14"
+"vue@npm:^2.7.16":
+  version: 2.7.16
+  resolution: "vue@npm:2.7.16"
   dependencies:
-    "@vue/compiler-sfc": 2.7.14
+    "@vue/compiler-sfc": 2.7.16
     csstype: ^3.1.0
-  checksum: 8b06da67cc40870c66a30b7a6bc2874950cd4383792c371eb30497dd14fc7b41cf308b1c4517368d8f0e7ac16198c08de19236f6a79fe43f4bdbc4a1d9d4ad07
+  checksum: 42eb129edbd2b647b7a5e0655d69fb2dfcba55009bd4cc6a80da5006ba19054bcbf56554599d9b4379f4aa3bfabc0b4e68c0d7fb47d92b5e41d56b38791553eb
   languageName: node
   linkType: hard
 
