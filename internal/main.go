@@ -19,7 +19,6 @@ import (
 	"github.com/florianloch/cassette/internal/spotify"
 	"github.com/florianloch/cassette/internal/util"
 
-	"github.com/NYTimes/gziphandler"
 	"github.com/go-chi/chi"
 	chiMiddleware "github.com/go-chi/chi/middleware"
 	"github.com/gorilla/csrf"
@@ -153,11 +152,12 @@ func setupAPI(webRoot string, isDevMode bool) http.Handler {
 	staticAssetsPath := filepath.Join(webRoot, constants.WebStaticContentPath)
 	spaHandler := handler.
 		NewSpaHandler(staticAssetsPath, "index.html").
-		SetFileServer(gziphandler.GzipHandler(http.FileServer(http.Dir(staticAssetsPath))))
+		SetFileServer(http.FileServer(http.Dir(staticAssetsPath)))
 	log.Info().Msgf("Loading assets from: '%s'", staticAssetsPath)
 
 	r := chi.NewRouter()
 
+	r.Use(chiMiddleware.Compress(5))
 	r.Use(chiMiddleware.RequestID)
 	r.Use(hlog.NewHandler(log.Logger))
 	r.Use(middleware.ChiRequestIDHandler("reqID", ""))

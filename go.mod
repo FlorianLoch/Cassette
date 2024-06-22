@@ -3,7 +3,6 @@ module github.com/florianloch/cassette
 go 1.22
 
 require (
-	github.com/NYTimes/gziphandler v1.1.1
 	github.com/gavv/httpexpect/v2 v2.16.0 // lock to this version, test breaks when upgrading
 	github.com/go-chi/chi v1.5.5
 	github.com/golang/mock v1.6.0

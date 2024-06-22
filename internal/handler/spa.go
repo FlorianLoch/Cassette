@@ -24,14 +24,17 @@ type spaHandler struct {
 
 func NewSpaHandler(staticPath string, indexPath string) *spaHandler {
 	return &spaHandler{
-		staticPath,
-		filepath.Join(staticPath, indexPath),
-		http.FileServer(http.Dir(staticPath)),
+		staticPath: staticPath,
+		indexPath:  filepath.Join(staticPath, indexPath),
+		fileServer: http.FileServer(http.Dir(staticPath)),
 	}
 }
 
 func (h *spaHandler) SetFileServer(handler http.Handler) *spaHandler {
-	h.fileServer = handler
+	h.fileServer = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		handler.ServeHTTP(w, r)
+	})
 
 	return h
 }
@@ -44,9 +47,10 @@ func (h *spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// get the absolute path to prevent directory traversal
 	path, err := filepath.Abs(r.URL.Path)
 	if err != nil {
-		// if we failed to get the absolute path respond with a 400 bad request
+		// if we fail to get the absolute path, respond with a 400 bad request
 		// and stop
 		http.Error(w, err.Error(), http.StatusBadRequest)
+
 		return
 	}
 
@@ -55,21 +59,26 @@ func (h *spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// check whether a file (and only a file, not a directory or a link to a file) exists at the given path
 	stat, err := os.Lstat(path)
-	if os.IsNotExist(err) || (err == nil && !stat.Mode().IsRegular()) {
+	if os.IsNotExist(err) || (err == nil && !stat.Mode().IsRegular()) || path == h.indexPath {
 		// file does not exist, serve index page
 		hlog.FromRequest(r).Debug().Str("indexPath", h.indexPath).Msg("Trying to serve default page.")
 
 		http.ServeFile(w, r, h.indexPath)
+
 		return
 	} else if err != nil {
 		// if we got an error (that wasn't that the file doesn't exist) stating the
 		// file, return a 500 internal server error and stop
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+
 		return
 	}
 
 	hlog.FromRequest(r).Debug().Msgf("Trying to serve: '%s'", path)
 
-	// otherwise, use http.FileServer to serve the static dir
+	// Otherwise, use http.FileServer to serve the static dir
+	// In this case we can set a max-age of 1 year as the file names contain cache busters.
+	// But, as the index file does not contain one, we cannot allow it to be cached for that long.
+	w.Header().Set("Cache-Control", "max-age=31536000")
 	h.fileServer.ServeHTTP(w, r)
 }
