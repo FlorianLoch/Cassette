@@ -177,7 +177,7 @@ func beforeEach(t *testing.T) (*httpexpect.Expect, *gomock.Controller, *mocks.Mo
 	handler := main.SetupForTest(daoMock, authMock, spotClientMockCreator, webRoot)
 
 	e := httpexpect.WithConfig(httpexpect.Config{
-		BaseURL: "http://cassette-app.de",
+		BaseURL: "http://cassette-for-spotify.app",
 		Client: &http.Client{
 			Transport: httpexpect.NewBinder(handler),
 			Jar:       httpexpect.NewCookieJar(),

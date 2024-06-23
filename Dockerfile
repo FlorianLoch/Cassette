@@ -23,7 +23,7 @@ RUN yarn install
 COPY .git/ .git/
 RUN GIT_VERSION=$(git describe --always) GIT_AUTHOR_DATE=$(git log -1 --format=%aI) BUILD_DATE=$(date +%Y-%m-%dT%H:%M:%S%z) yarn build
 
-FROM alpine
+FROM alpine:3.19
 RUN apk --no-cache add ca-certificates
 WORKDIR /app
 COPY ./CHECKS .

@@ -8,9 +8,25 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strconv"
+	"sync"
 	"time"
+
+	"github.com/go-chi/chi"
+	chiMiddleware "github.com/go-chi/chi/middleware"
+	"github.com/gorilla/csrf"
+	"github.com/gorilla/sessions"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/hlog"
+	"github.com/rs/zerolog/log"
+	metrics "github.com/slok/go-http-metrics/metrics/prometheus"
+	httpMetricsMiddleware "github.com/slok/go-http-metrics/middleware"
+	"github.com/slok/go-http-metrics/middleware/std"
+	spotifyAPI "github.com/zmb3/spotify"
+	"golang.org/x/oauth2"
 
 	"github.com/florianloch/cassette/internal/constants"
 	"github.com/florianloch/cassette/internal/handler"
@@ -18,16 +34,6 @@ import (
 	"github.com/florianloch/cassette/internal/persistence"
 	"github.com/florianloch/cassette/internal/spotify"
 	"github.com/florianloch/cassette/internal/util"
-
-	"github.com/go-chi/chi"
-	chiMiddleware "github.com/go-chi/chi/middleware"
-	"github.com/gorilla/csrf"
-	"github.com/gorilla/sessions"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/hlog"
-	"github.com/rs/zerolog/log"
-	spotifyAPI "github.com/zmb3/spotify"
-	"golang.org/x/oauth2"
 )
 
 var (
@@ -43,6 +49,9 @@ type spotClientCreator func(token *oauth2.Token) spotify.SpotClient
 type m map[string]interface{}
 
 func RunInProduction() {
+	ctx, cancelFn := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer cancelFn()
+
 	isDevMode := util.Env(constants.EnvENV, "") == "DEV"
 
 	networkInterface := util.Env(constants.EnvNetworkInterface, constants.DefaultNetworkInterface)
@@ -88,13 +97,86 @@ func RunInProduction() {
 	if err != nil {
 		log.Fatal().Err(err).Msg("Could not get current working directory.")
 	}
-	r := setupAPI(cwd, isDevMode)
 
-	interfacePort := networkInterface + ":" + port
-	log.Info().Msgf("Webserver started: http://%s", interfacePort)
+	publicRouter := chi.NewRouter()
 
-	err = http.ListenAndServe(interfacePort, r)
-	log.Fatal().Err(err).Msg("Server terminated.")
+	internalRouter := chi.NewRouter()
+
+	promMiddleware := httpMetricsMiddleware.New(httpMetricsMiddleware.Config{
+		Recorder: metrics.NewRecorder(metrics.Config{}),
+	})
+
+	publicRouter.Use(std.HandlerProvider("", promMiddleware))
+
+	setupAPI(cwd, isDevMode, publicRouter)
+
+	internalRouter.Handle("/internal/metrics", promhttp.Handler())
+
+	publicServerAddr := fmt.Sprintf("%s:%s", networkInterface, port)
+	internalServerAddr := fmt.Sprintf("%s:%s",
+		util.Env(constants.EnvInternalNetworkInterface, constants.DefaultNetworkInterface),
+		util.Env(constants.EnvInternalPort, constants.DefaultInternalPort))
+
+	publicServer := http.Server{
+		Addr:    publicServerAddr,
+		Handler: publicRouter,
+	}
+	internalServer := http.Server{
+		Addr:    internalServerAddr,
+		Handler: internalRouter,
+	}
+
+	serveWG := &sync.WaitGroup{}
+	serveWG.Add(3)
+
+	go func() {
+		defer serveWG.Done()
+
+		<-ctx.Done()
+
+		log.Debug().Msg("Shutdown signal received. Shutting down server...")
+
+		timeout, cancelFn := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancelFn()
+
+		if err := publicServer.Shutdown(timeout); err != nil {
+			log.Error().Err(err).Msg("Failed to shutdown public server gracefully.")
+		}
+
+		timeout, cancelFn = context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancelFn()
+
+		if err := internalServer.Shutdown(timeout); err != nil {
+			log.Error().Err(err).Msg("Failed to shutdown internal server gracefully.")
+		}
+	}()
+
+	go func() {
+		defer serveWG.Done()
+
+		if err := publicServer.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+			log.Fatal().Err(err).Msg("Failed running public server.")
+		}
+	}()
+
+	go func() {
+		defer serveWG.Done()
+
+		if err := internalServer.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+			log.Fatal().Err(err).Msg("Failed running internal server.")
+		}
+	}()
+
+	log.Info().Msgf("Public server is ready to handle requests at http://%s", publicServerAddr)
+	log.Info().Msgf("Internal server is ready to handle requests at http://%s", internalServerAddr)
+
+	<-ctx.Done()
+
+	log.Info().Msg("Waiting for connections to be closed and for server to shutdown...")
+
+	serveWG.Wait()
+
+	log.Info().Msg("Server have been shut down. Bye.")
 }
 
 func SetupForTest(
@@ -111,10 +193,13 @@ func SetupForTest(
 
 	createSpotClient = spotClientMockCreator
 
-	return setupAPI(webRoot, true)
+	r := chi.NewRouter()
+	setupAPI(webRoot, true, r)
+
+	return r
 }
 
-func setupAPI(webRoot string, isDevMode bool) http.Handler {
+func setupAPI(webRoot string, isDevMode bool, r chi.Router) {
 	if isDevMode {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	} else {
@@ -154,8 +239,6 @@ func setupAPI(webRoot string, isDevMode bool) http.Handler {
 		NewSpaHandler(staticAssetsPath, "index.html").
 		SetFileServer(http.FileServer(http.Dir(staticAssetsPath)))
 	log.Info().Msgf("Loading assets from: '%s'", staticAssetsPath)
-
-	r := chi.NewRouter()
 
 	r.Use(chiMiddleware.Compress(5))
 	r.Use(chiMiddleware.RequestID)
@@ -214,8 +297,6 @@ func setupAPI(webRoot string, isDevMode bool) http.Handler {
 	consentMiddleware := middleware.CreateConsentMiddleware(spaHandler)
 	chain := consentMiddleware(spotAuthMiddleware(spaHandler))
 	r.NotFound(chain.ServeHTTP)
-
-	return r
 }
 
 func attachSession(next http.Handler) http.Handler {
