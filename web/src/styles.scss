@@ -241,10 +241,10 @@ $footer-height: 10rem;
 // the DOM including the CSS pseudo selectors. A simple regex should not be able to find it.
 #emailAddress {
   &::before {
-      content: "me@";
+      content: "flo@";
   }
 
   &::after {
-      content: "fdlo.ch";
+      content: "cassette-for-spotify.app";
   }
 }
