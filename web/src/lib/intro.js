@@ -52,7 +52,7 @@ const Intro = function () {
                     on: "auto",
                 },
                 title: "Refresh active devices",
-                text: "It seems like there is no active device currently. Please make sure Spotify is currently playing (and not in offline mode). Sometimes the mobile app might require you to pause/unpause/skip in order to synchronize with Spotify's platform. This sometimes is a little buggy - and nothing Cassette could do about it. &#128533<hr>In order to continue with the tour please click the big, yellow button.",
+                text: "It seems like there is no active device currently. Please make sure Spotify is currently playing (and not in offline mode). Sometimes the mobile app might require you to pause/unpause/skip to synchronize with Spotify's platform. This sometimes is a little buggy — and there is nothing Cassette could do about it. &#128533<hr>To continue with the tour, please click the big, yellow button (and ensure something is playing).",
             })
         }
 
@@ -62,7 +62,7 @@ const Intro = function () {
                 on: "auto",
             },
             title: "Suspend your current state",
-            text: "Pause and store your current state in a new 'slot'. You can have as many slots as you want - allowing you to suspend an arbitrary amount of audiobooks/albums/playlists.<hr>In order to continue with the tour please make sure there is still some active playback and click the button.",
+            text: "Pause and store your current state in a new \"slot\". You can have as many slots as you want — allowing you to suspend an arbitrary number of audiobooks/albums/playlists.<hr>To continue with the tour, please make sure there is still some active playback and click the button.",
         })
 
         tour.addStep({
@@ -71,7 +71,7 @@ const Intro = function () {
                 on: "auto",
             },
             title: "Your first slot/state",
-            text: "We call this a slot, a place to store Spotify's player state into. The state stored in a slot can be resumed or overwritten. Of course you might also remove the slot.<hr>",
+            text: "We call this a slot, a place to store Spotify's player state into. The state stored in a slot can be resumed or overwritten. Of course, you might also remove the slot.<hr>",
             buttons: [nextBtn],
         })
 
@@ -91,7 +91,7 @@ const Intro = function () {
                 on: "auto",
             },
             title: "Restore a slot/resume a state",
-            text: "Click here to restore this state and continue playback on the currently active device. If there are several active devices you may use the dropdown button to select a specific device. Don't be surprised: Cassette jumps back 10s in the track in order to ease getting back into audiobooks etc.<hr>In order to continue with the tour please make sure there is an active device and click the button. Due to energy saving measures a mobile device running a Spotify app might not show up in your active devices unless the app is running in the foreground or actually playing some music.",
+            text: "Click here to restore this state and continue playback on the currently active device. If there are several active devices, you may use the dropdown button to select a specific device. Don't be surprised: Cassette jumps back 10s in the track in order to ease getting back into audiobooks etc.<hr>In order to continue with the tour please make sure there is an active device and click the button. Due to energy saving measures, a mobile device running a Spotify app might not show up in your active devices unless the app is running in the foreground or actually playing some music.",
         })
 
         tour.addStep({
@@ -100,7 +100,7 @@ const Intro = function () {
                 on: "auto",
             },
             title: "Overwrite a slot/update a state",
-            text: "Click to update the state stored in this slot.<hr>In order to continue with the tour please click the button.",
+            text: "Click to update the state stored in this slot.<hr>To continue with the tour, please click the button.",
         })
 
         tour.addStep({
