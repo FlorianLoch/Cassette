@@ -123,10 +123,10 @@ func TestRetrievalOfActiveDevices(t *testing.T) {
 	a.Length().IsEqual(2)
 	o1 := a.Value(0).Object()
 	o1.Value("name").String().IsEqual("Device 1")
-	o1.Value("active").Boolean().False()
+	o1.Value("active").Boolean().IsFalse()
 	o2 := a.Value(1).Object()
 	o2.Value("name").String().IsEqual("Device 2")
-	o2.Value("active").Boolean().True()
+	o2.Value("active").Boolean().IsTrue()
 }
 
 func TestSavePlayerState(t *testing.T) {
