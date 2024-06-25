@@ -14,12 +14,16 @@
     .footer.p-3.text-center
         p(v-if="$route.name === 'Main'")
             a(href="/?showHelp=true") Show help
-        p
-            | Content provided by Spotify&reg;.
+        p Found an issue? Please create a ticket over at&nbsp;
+            a(href="https://github.com/florianloch/cassette/issues" target="_blank") GitHub
+            | &nbsp;or write to&nbsp;
+            span.emailAddress
+            |.
+        p Content provided by Spotify&reg;.
             br
             | Check out Cassette's source code at
             |
-            a(href="https://github.com/florianloch/cassette") GitHub
+            a(href="https://github.com/florianloch/cassette" target="_blank") GitHub
             | .
         p
             router-link(:to="{ name: 'Consent' }") Privacy policy / manage your data.

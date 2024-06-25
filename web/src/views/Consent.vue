@@ -31,7 +31,7 @@
                 a(href="https://plausible.io/privacy-focused-web-analytics" target="_blank") Plausible
                 | , a GDPR-compliant analytics tool. It does not track individual users, does not collect personal information and does not use cookies. Therefore, it's always active and does not require this consent.
             p This service is provided by: Florian Loch (
-                span#emailAddress
+                span.emailAddress
                 | ).
             p Feel free to ask your questions about Cassette. Please report bugs and abuse.
 

@@ -120,7 +120,7 @@ body {
   }
 }
 
-$footer-height: 10rem;
+$footer-height: 15rem;
 .footer {
   height: $footer-height;
   font-size: 1rem;
@@ -252,7 +252,7 @@ $footer-height: 10rem;
 
 // In order to for some spam bot to find this email address it needs to be capable of rendering
 // the DOM including the CSS pseudo selectors. A simple regex should not be able to find it.
-#emailAddress {
+.emailAddress {
   &::before {
     content: "flo@";
   }
