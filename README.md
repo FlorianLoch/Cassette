@@ -1,7 +1,7 @@
 ![build and test](https://github.com/FlorianLoch/Cassette/actions/workflows/ci_cd.yaml/badge.svg)
 [![Coverage Status](https://coveralls.io/repos/github/FlorianLoch/Cassette/badge.svg?branch=master)](https://coveralls.io/github/FlorianLoch/Cassette?branch=master)
 
-# Cassette
+# Cassette for Spotify
 
 ![](./web/assets/cassette_logo.svg)
 
