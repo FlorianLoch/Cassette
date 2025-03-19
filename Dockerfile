@@ -1,6 +1,6 @@
 # Version of golang image should be the same as used in Github CI
 # We cannot use the alpine image anymore because we need to invoke `git` to fill the build args
-FROM golang:1.22.4 AS gobuilder
+FROM golang:1.24.1 AS gobuilder
 WORKDIR /src/github.com/florianloch/cassette
 # We run the next three lines before copying the workspace in order to avoid having Go download all modules everytime somethings changes
 COPY go.mod .
@@ -23,7 +23,7 @@ RUN yarn install
 COPY .git/ .git/
 RUN GIT_VERSION=$(git describe --always) GIT_AUTHOR_DATE=$(git log -1 --format=%aI) BUILD_DATE=$(date +%Y-%m-%dT%H:%M:%S%z) yarn build
 
-FROM alpine:3.19
+FROM alpine
 RUN apk --no-cache add ca-certificates
 WORKDIR /app
 COPY ./CHECKS .
