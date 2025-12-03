@@ -34,10 +34,10 @@ clean:
 	rm $(cassette_bin) || true
 
 run-server: $(cassette_bin)
-	CASSETTE_NETWORK_INTERFACE=localhost $(cassette_bin)
+	CASSETTE_NETWORK_INTERFACE=127.0.0.1 $(cassette_bin)
 
 run: build-all
-	CASSETTE_NETWORK_INTERFACE=localhost $(cassette_bin)
+	CASSETTE_NETWORK_INTERFACE=127.0.0.1 $(cassette_bin)
 
 lint: .make/go-lint
 
