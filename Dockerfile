@@ -1,16 +1,17 @@
 # Version of golang image should be the same as used in Github CI
 # We cannot use the alpine image anymore because we need to invoke `git` to fill the build args
-FROM golang:1.24.1 AS gobuilder
+FROM golang:1.26.0 AS gobuilder
 WORKDIR /src/github.com/florianloch/cassette
 # We run the next three lines before copying the workspace in order to avoid having Go download all modules everytime somethings changes
 COPY go.mod .
 COPY go.sum .
 RUN go mod download
 COPY . .
-RUN GOOS=linux GARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X main.gitVersion=$(git describe --always) -X main.gitAuthorDate=$(git log -1 --format=%aI) -X main.buildDate=$(date +%Y-%m-%dT%H:%M:%S%z)"
+# Build the binary statically so that we can use it in Alpine
+RUN CGO_ENABLED=0 go build -ldflags="-w -s -X main.gitVersion=$(git describe --always) -X main.gitAuthorDate=$(git log -1 --format=%aI) -X main.buildDate=$(date +%Y-%m-%dT%H:%M:%S%z)"
 
 
-FROM node:22-alpine3.19 AS webbuilder
+FROM node:22-alpine AS webbuilder
 RUN apk --no-cache add git
 RUN corepack enable
 RUN corepack prepare yarn@3.4.1 --activate
